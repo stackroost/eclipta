@@ -1,0 +1,7 @@
+[package]
+name = "user"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aya = { git = "https://github.com/aya-rs/aya", tag = "aya-v0.13.1" }

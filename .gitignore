@@ -1,1 +1,18 @@
-/target
+# Rust build
+target
+**/target
+*.o
+*.elf
+Cargo.lock
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.log
+
+# System junk
+.DS_Store
+Thumbs.db

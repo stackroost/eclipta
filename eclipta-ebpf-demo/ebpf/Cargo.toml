@@ -1,0 +1,11 @@
+[package]
+name = "ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aya-ebpf = { git = "https://github.com/aya-rs/aya", package = "aya-ebpf", tag = "aya-v0.13.1" }
+
+[[bin]]
+name = "trace_execve"
+path = "src/main.rs"
