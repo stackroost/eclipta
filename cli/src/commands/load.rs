@@ -1,4 +1,4 @@
-use aya::{BpfLoader, programs::TracePoint};
+use aya::{programs::TracePoint, EbpfLoader};
 use clap::Args;
 use std::path::PathBuf;
 use crate::utils::logger::{info, success, error};
@@ -44,7 +44,7 @@ pub fn handle_load(opts: LoadOptions) {
         info(&format!("Target tracepoint: {}", opts.tracepoint));
     }
 
-    match BpfLoader::new().load_file(&opts.program) {
+    match EbpfLoader::new().load_file(&opts.program) {
         Ok(mut bpf) => {
             match bpf.program_mut(&opts.name) {
                 Some(prog) => {
