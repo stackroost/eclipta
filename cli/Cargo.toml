@@ -16,3 +16,5 @@ log = "0.4"
 tokio = { version = "1.38", features = ["rt-multi-thread", "time", "signal"] }
 byteorder = "1"
 bytes = "1.10.1"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
