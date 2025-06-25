@@ -2,11 +2,12 @@ mod commands;
 mod utils;
 
 use clap::{Parser, Subcommand};
-use commands::{welcome::run_welcome, status::run_status, load::{handle_load, LoadOptions}};
+use commands::{load::handle_load, logs::LogOptions, status::run_status, welcome::run_welcome};
+use commands::logs::handle_logs;
 
 #[derive(Parser)]
 #[command(name = "eclipta")]
-#[command(about = "eclipta CLI - self-hosted observability platform", long_about = None)]
+#[command(about = "eclipta CLI - self-hosted observability platform")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -16,7 +17,8 @@ struct Cli {
 enum Commands {
     Welcome,
     Status,
-    Load(LoadOptions),
+    Load(commands::load::LoadOptions),
+    Logs(LogOptions),
 }
 
 fn main() {
@@ -26,5 +28,9 @@ fn main() {
         Commands::Welcome => run_welcome(),
         Commands::Status => run_status(),
         Commands::Load(opts) => handle_load(opts),
+        Commands::Logs(opts) => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_logs(opts));
+        }
     }
 }
