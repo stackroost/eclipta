@@ -2,7 +2,7 @@ mod commands;
 mod utils;
 
 use clap::{Parser, Subcommand};
-use commands::{welcome::run_welcome, status::run_status};
+use commands::{welcome::run_welcome, status::run_status, load::{handle_load, LoadOptions}};
 
 #[derive(Parser)]
 #[command(name = "eclipta")]
@@ -16,6 +16,7 @@ struct Cli {
 enum Commands {
     Welcome,
     Status,
+    Load(LoadOptions),
 }
 
 fn main() {
@@ -24,5 +25,6 @@ fn main() {
     match cli.command {
         Commands::Welcome => run_welcome(),
         Commands::Status => run_status(),
+        Commands::Load(opts) => handle_load(opts),
     }
 }
