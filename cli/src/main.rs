@@ -4,6 +4,8 @@ mod utils;
 use clap::{Parser, Subcommand};
 use commands::{welcome::run_welcome, status::run_status, load::handle_load, logs::handle_logs, unload::{handle_unload, UnloadOptions}};
 use crate::commands::logs::LogOptions;
+use commands::inspect::{handle_inspect, InspectOptions};
+
 
 
 #[derive(Parser)]
@@ -21,6 +23,8 @@ enum Commands {
     Load(commands::load::LoadOptions),
     Logs(LogOptions),
     Unload(UnloadOptions),
+    Inspect(InspectOptions),
+
 }
 
 fn main() {
@@ -30,7 +34,8 @@ fn main() {
         Commands::Welcome => run_welcome(),
         Commands::Status => run_status(),
         Commands::Load(opts) => handle_load(opts),
-         Commands::Unload(opts) => handle_unload(opts),
+        Commands::Unload(opts) => handle_unload(opts),
+        Commands::Inspect(opts) => handle_inspect(opts),
         Commands::Logs(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_logs(opts));
