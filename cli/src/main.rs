@@ -9,6 +9,8 @@ use commands::agents::{handle_agents, AgentOptions};
 use commands::agents_inspect::{handle_inspect_agent, InspectAgentOptions};
 use commands::restart_agent::{handle_restart_agent, RestartAgentOptions};
 use commands::agent_logs::{handle_agent_logs, AgentLogsOptions};
+use commands::live::handle_live;
+
 
 
 #[derive(Parser)]
@@ -31,8 +33,8 @@ enum Commands {
     RestartAgent(RestartAgentOptions),
     Agents(AgentOptions),
     AgentLogs(AgentLogsOptions),
+    Live,
 }
-
 fn main() {
     let cli = Cli::parse();
 
@@ -42,16 +44,20 @@ fn main() {
         Commands::Load(opts) => handle_load(opts),
         Commands::Unload(opts) => handle_unload(opts),
         Commands::Inspect(opts) => handle_inspect(opts),
-        Commands::Agents(opts) => handle_agents(opts),
-        Commands::InspectAgent(opts) => handle_inspect_agent(opts),
-        Commands::RestartAgent(opts) => handle_restart_agent(opts),
-        Commands::AgentLogs(opts) => {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(handle_agent_logs(opts));
-},
         Commands::Logs(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_logs(opts));
-        }
+        },
+        Commands::Agents(opts) => handle_agents(opts),
+        Commands::AgentLogs(opts) => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_agent_logs(opts));
+        },
+        Commands::InspectAgent(opts) => handle_inspect_agent(opts),
+Commands::RestartAgent(opts) => handle_restart_agent(opts),
+        Commands::Live => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_live());
+        },
     }
 }
