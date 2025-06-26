@@ -6,7 +6,7 @@ use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Spans},
+    text::{Span},
     widgets::{Block, Borders, Cell, Row, Table},
     Terminal,
 };

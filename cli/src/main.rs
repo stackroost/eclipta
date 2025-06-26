@@ -10,8 +10,7 @@ use commands::agents_inspect::{handle_inspect_agent, InspectAgentOptions};
 use commands::restart_agent::{handle_restart_agent, RestartAgentOptions};
 use commands::agent_logs::{handle_agent_logs, AgentLogsOptions};
 use commands::live::handle_live;
-
-
+use commands::daemon::handle_daemon;
 
 #[derive(Parser)]
 #[command(name = "eclipta")]
@@ -34,6 +33,7 @@ enum Commands {
     Agents(AgentOptions),
     AgentLogs(AgentLogsOptions),
     Live,
+    Daemon,
 }
 fn main() {
     let cli = Cli::parse();
@@ -54,10 +54,14 @@ fn main() {
             rt.block_on(handle_agent_logs(opts));
         },
         Commands::InspectAgent(opts) => handle_inspect_agent(opts),
-Commands::RestartAgent(opts) => handle_restart_agent(opts),
+        Commands::RestartAgent(opts) => handle_restart_agent(opts),
         Commands::Live => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_live());
         },
+        Commands::Daemon => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_daemon());
+        }
     }
 }

@@ -9,3 +9,4 @@ pub mod agents_inspect;
 pub mod restart_agent;
 pub mod agent_logs;
 pub mod live;
+pub mod daemon;
