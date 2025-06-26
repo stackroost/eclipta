@@ -6,3 +6,4 @@ pub mod unload;
 pub mod inspect;
 pub mod agents;
 pub mod agents_inspect;
+pub mod restart_agent;
