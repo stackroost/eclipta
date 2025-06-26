@@ -6,8 +6,7 @@ use commands::{welcome::run_welcome, status::run_status, load::handle_load, logs
 use crate::commands::logs::LogOptions;
 use commands::inspect::{handle_inspect, InspectOptions};
 use commands::agents::{handle_agents, AgentOptions};
-
-
+use commands::agents_inspect::{handle_inspect_agent, InspectAgentOptions};
 
 
 #[derive(Parser)]
@@ -26,6 +25,7 @@ enum Commands {
     Logs(LogOptions),
     Unload(UnloadOptions),
     Inspect(InspectOptions),
+    InspectAgent(InspectAgentOptions),
     Agents(AgentOptions),
 
 }
@@ -40,6 +40,7 @@ fn main() {
         Commands::Unload(opts) => handle_unload(opts),
         Commands::Inspect(opts) => handle_inspect(opts),
         Commands::Agents(opts) => handle_agents(opts),
+        Commands::InspectAgent(opts) => handle_inspect_agent(opts),
         Commands::Logs(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_logs(opts));
