@@ -13,3 +13,4 @@ pub mod daemon;
 pub mod monitor;
 pub mod ping_all;
 pub mod watch_cpu;
+pub mod config;
