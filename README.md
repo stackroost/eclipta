@@ -8,23 +8,35 @@
 
 ## Features
 
-- **Modular CLI Interface**  
-  Easily run commands like `load`, `logs`, `agents`, `live`, `daemon`, and more.
 
-- **Agent Daemon**  
-  A lightweight background service that collects kernel version, uptime, memory, and load metrics and writes to `/run/eclipta/agent.json`.
+###  Agent Management
+- `agents` – List and inspect all connected agents
+- `inspect-agent` – View detailed info about a specific agent
+- `restart-agent` – Restart an agent service
+- `kill-agent` – Kill and stop an agent immediately
+- `update-agent` – Upgrade agent binary (with version, force, restart flags)
 
-- **Live Monitoring (`top`-like)**  
-  Beautiful terminal UI to monitor system metrics in real-time (powered by [`tui`](https://github.com/fdehau/tui-rs)).
+###  System Monitoring
+- `live` – Real-time terminal monitoring (CPU, memory, disk, etc.)
+- `monitor` – Dashboard view of all agents
+- `watch-cpu` – Live graph of CPU usage for one agent
 
-- **eBPF-Friendly Design**  
-  Uses `aya` crate to support attaching custom eBPF programs (e.g. `trace_execve`) to track system calls.
+### Metrics & Logs
+- `logs` – View global system logs
+- `agent-logs` – View logs for a specific agent (with tail/follow)
+- `status` – Show system-wide status
 
-- **Agent-Specific Logs**  
-  Fetch logs from any registered agent with one command.
+### Configuration
+- `config` – Get/set configuration for an agent (e.g. thresholds, intervals)
+- `version` – Show current CLI version and agent version
+- `alerts` – List agents in alert state
 
-- ⚡ **Pure Rust Stack**  
-  From CLI to daemon — built in Rust for performance, safety, and zero dependencies on Python or Node.
+###  Utilities
+- `load` / `unload` – Load or unload eBPF programs
+- `inspect` – Inspect active kernel programs
+- `daemon` – Run eclipta agent heartbeat writer in the background
+- `ping-all` – Ping and verify all agent health
+- `welcome` – Display the CLI welcome screen
 
 ---
 
