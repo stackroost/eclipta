@@ -1,16 +1,23 @@
 mod commands;
 mod utils;
 
-use clap::{Parser, Subcommand};
-use commands::{welcome::run_welcome, status::run_status, load::handle_load, logs::handle_logs, unload::{handle_unload, UnloadOptions}};
 use crate::commands::logs::LogOptions;
-use commands::inspect::{handle_inspect, InspectOptions};
+use clap::{Parser, Subcommand};
+use commands::agent_logs::{handle_agent_logs, AgentLogsOptions};
 use commands::agents::{handle_agents, AgentOptions};
 use commands::agents_inspect::{handle_inspect_agent, InspectAgentOptions};
-use commands::restart_agent::{handle_restart_agent, RestartAgentOptions};
-use commands::agent_logs::{handle_agent_logs, AgentLogsOptions};
-use commands::live::handle_live;
 use commands::daemon::handle_daemon;
+use commands::inspect::{handle_inspect, InspectOptions};
+use commands::live::handle_live;
+use commands::monitor::handle_monitor;
+use commands::restart_agent::{handle_restart_agent, RestartAgentOptions};
+use commands::{
+    load::handle_load,
+    logs::handle_logs,
+    status::run_status,
+    unload::{handle_unload, UnloadOptions},
+    welcome::run_welcome,
+};
 
 #[derive(Parser)]
 #[command(name = "eclipta")]
@@ -34,6 +41,7 @@ enum Commands {
     AgentLogs(AgentLogsOptions),
     Live,
     Daemon,
+    Monitor,
 }
 fn main() {
     let cli = Cli::parse();
@@ -47,21 +55,25 @@ fn main() {
         Commands::Logs(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_logs(opts));
-        },
+        }
         Commands::Agents(opts) => handle_agents(opts),
         Commands::AgentLogs(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_agent_logs(opts));
-        },
+        }
         Commands::InspectAgent(opts) => handle_inspect_agent(opts),
         Commands::RestartAgent(opts) => handle_restart_agent(opts),
         Commands::Live => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_live());
-        },
+        }
         Commands::Daemon => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_daemon());
+        }
+        Commands::Monitor => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_monitor()).unwrap();
         }
     }
 }
