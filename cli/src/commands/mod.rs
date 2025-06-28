@@ -11,3 +11,4 @@ pub mod agent_logs;
 pub mod live;
 pub mod daemon;
 pub mod monitor;
+pub mod ping_all;

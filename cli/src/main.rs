@@ -2,22 +2,23 @@ mod commands;
 mod utils;
 
 use crate::commands::logs::LogOptions;
-use clap::{Parser, Subcommand};
-use commands::agent_logs::{handle_agent_logs, AgentLogsOptions};
-use commands::agents::{handle_agents, AgentOptions};
-use commands::agents_inspect::{handle_inspect_agent, InspectAgentOptions};
+use clap::{ Parser, Subcommand };
+use commands::agent_logs::{ handle_agent_logs, AgentLogsOptions };
+use commands::agents::{ handle_agents, AgentOptions };
+use commands::agents_inspect::{ handle_inspect_agent, InspectAgentOptions };
 use commands::daemon::handle_daemon;
-use commands::inspect::{handle_inspect, InspectOptions};
+use commands::inspect::{ handle_inspect, InspectOptions };
 use commands::live::handle_live;
 use commands::monitor::handle_monitor;
-use commands::restart_agent::{handle_restart_agent, RestartAgentOptions};
+use commands::restart_agent::{ handle_restart_agent, RestartAgentOptions };
 use commands::{
     load::handle_load,
     logs::handle_logs,
     status::run_status,
-    unload::{handle_unload, UnloadOptions},
+    unload::{ handle_unload, UnloadOptions },
     welcome::run_welcome,
 };
+use commands::ping_all;
 
 #[derive(Parser)]
 #[command(name = "eclipta")]
@@ -42,6 +43,7 @@ enum Commands {
     Live,
     Daemon,
     Monitor,
+    PingAll,
 }
 fn main() {
     let cli = Cli::parse();
@@ -74,6 +76,10 @@ fn main() {
         Commands::Monitor => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_monitor()).unwrap();
+        }
+        Commands::PingAll => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(ping_all::handle_ping_all());
         }
     }
 }
