@@ -17,6 +17,7 @@ use commands::config::{ handle_config, ConfigOptions };
 use commands::watch_cpu::{ handle_watch_cpu, WatchCpuOptions };
 use commands::kill_agent::{ handle_kill_agent, KillAgentOptions };
 use commands::update_agent::{ handle_update_agent, UpdateAgentOptions };
+use commands::version::{ handle_version, VersionOptions };
 use commands::{
     load::handle_load,
     logs::handle_logs,
@@ -54,6 +55,7 @@ enum Commands {
     Alerts,
     KillAgent(KillAgentOptions),
     UpdateAgent(UpdateAgentOptions),
+    Version(VersionOptions),
 }
 fn main() {
     let cli = Cli::parse();
@@ -107,6 +109,10 @@ fn main() {
         Commands::UpdateAgent(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_update_agent(opts)).unwrap();
+        }
+        Commands::Version(opts) => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_version(opts)).unwrap();
         }
     }
 }
