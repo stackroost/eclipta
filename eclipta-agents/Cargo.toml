@@ -1,6 +1,6 @@
 [package]
-name = "eclipta-agents"
-version = "0.1.0"
+name = "eclipta-agent"
+version = "0.2.1"
 edition = "2021"
 
 [dependencies]
@@ -8,3 +8,7 @@ chrono = "0.4"
 hostname = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[[bin]]
+name = "eclipta-agent"
+path = "src/main.rs"

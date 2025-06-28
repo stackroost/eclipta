@@ -16,3 +16,4 @@ pub mod watch_cpu;
 pub mod config;
 pub mod alerts;
 pub mod kill_agent;
+pub mod update_agent;
