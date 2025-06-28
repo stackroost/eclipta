@@ -15,6 +15,7 @@ use commands::alerts::handle_alerts;
 use commands::restart_agent::{ handle_restart_agent, RestartAgentOptions };
 use commands::config::{ handle_config, ConfigOptions };
 use commands::watch_cpu::{ handle_watch_cpu, WatchCpuOptions };
+use commands::kill_agent::{handle_kill_agent, KillAgentOptions};
 use commands::{
     load::handle_load,
     logs::handle_logs,
@@ -50,6 +51,7 @@ enum Commands {
     WatchCpu(WatchCpuOptions),
     Config(ConfigOptions),
     Alerts,
+    KillAgent(KillAgentOptions),
 }
 fn main() {
     let cli = Cli::parse();
@@ -99,5 +101,7 @@ fn main() {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_alerts()).unwrap();
         }
+        Commands::KillAgent(opts) => handle_kill_agent(opts).unwrap(),
+        
     }
 }

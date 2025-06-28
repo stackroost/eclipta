@@ -15,3 +15,4 @@ pub mod ping_all;
 pub mod watch_cpu;
 pub mod config;
 pub mod alerts;
+pub mod kill_agent;

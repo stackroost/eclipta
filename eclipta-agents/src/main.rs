@@ -1,4 +1,4 @@
-use std::{fs, thread, time::Duration};
+use std::{ fs, thread, time::Duration };
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -48,6 +48,7 @@ fn main() {
         let tcp_connections = get_tcp_connection_count();
 
         let alert = should_alert(&cpu_load, mem_used_mb, mem_total_mb);
+        fs::write(status_dir.join(format!("{agent_id}.pid")), std::process::id().to_string()).ok();
 
         let status = AgentStatus {
             id: agent_id.to_string(),
@@ -81,10 +82,7 @@ fn main() {
 }
 
 fn get_hostname() -> String {
-    hostname::get()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string()
+    hostname::get().unwrap_or_default().to_string_lossy().to_string()
 }
 
 fn get_kernel() -> String {
@@ -98,7 +96,12 @@ fn get_kernel() -> String {
 fn get_uptime_secs() -> u64 {
     fs::read_to_string("/proc/uptime")
         .ok()
-        .and_then(|s| s.split('.').next().map(|v| v.parse().unwrap_or(0)))
+        .and_then(|s|
+            s
+                .split('.')
+                .next()
+                .map(|v| v.parse().unwrap_or(0))
+        )
         .unwrap_or(0)
 }
 
@@ -137,7 +140,6 @@ fn get_memory_mb() -> (u64, u64) {
     (used / 1024, total / 1024) // return in MB
 }
 
-
 fn get_disk_usage() -> (u64, u64) {
     let output = Command::new("df").arg("-BM").arg("/").output();
     if let Ok(out) = output {
@@ -171,7 +173,9 @@ fn get_network_io() -> (u64, u64) {
 fn get_process_count() -> usize {
     let entries = match fs::read_dir("/proc") {
         Ok(entries) => entries,
-        Err(_) => return 0,
+        Err(_) => {
+            return 0;
+        }
     };
 
     entries
@@ -185,7 +189,6 @@ fn get_process_count() -> usize {
         .count()
 }
 
-
 fn get_tcp_connection_count() -> usize {
     fs::read_to_string("/proc/net/tcp")
         .map(|content| content.lines().skip(1).count())
@@ -193,6 +196,6 @@ fn get_tcp_connection_count() -> usize {
 }
 
 fn should_alert(cpu: &[f32; 3], used: u64, total: u64) -> bool {
-    let mem_percent = used as f32 / total as f32 * 100.0;
+    let mem_percent = ((used as f32) / (total as f32)) * 100.0;
     cpu[0] > 2.0 || mem_percent > 90.0
 }
