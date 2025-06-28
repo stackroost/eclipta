@@ -36,7 +36,7 @@ fn main() {
     loop {
         let hostname = get_hostname();
         let kernel = get_kernel();
-        let version = "v0.1.0".to_string();
+        let version = env!("CARGO_PKG_VERSION").to_string();
         let now = Utc::now().to_rfc3339();
         let uptime_secs = get_uptime_secs();
 
