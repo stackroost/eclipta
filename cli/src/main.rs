@@ -11,6 +11,7 @@ use commands::inspect::{ handle_inspect, InspectOptions };
 use commands::live::handle_live;
 use commands::monitor::handle_monitor;
 use commands::ping_all;
+use commands::alerts::handle_alerts;
 use commands::restart_agent::{ handle_restart_agent, RestartAgentOptions };
 use commands::config::{ handle_config, ConfigOptions };
 use commands::watch_cpu::{ handle_watch_cpu, WatchCpuOptions };
@@ -48,6 +49,7 @@ enum Commands {
     PingAll,
     WatchCpu(WatchCpuOptions),
     Config(ConfigOptions),
+    Alerts,
 }
 fn main() {
     let cli = Cli::parse();
@@ -92,6 +94,10 @@ fn main() {
         Commands::Config(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_config(opts)).unwrap();
+        }
+        Commands::Alerts => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(handle_alerts()).unwrap();
         }
     }
 }
