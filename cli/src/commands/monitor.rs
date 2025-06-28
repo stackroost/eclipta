@@ -5,7 +5,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use serde::Deserialize;
-use std::{fs, io, path::PathBuf, time::Duration};
+use std::{fs, io,  time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -19,8 +19,6 @@ use tui::{
 struct Agent {
     id: String,
     hostname: String,
-    kernel: String,
-    version: String,
     last_seen: String,
     uptime_secs: u64,
     cpu_load: [f32; 3],
