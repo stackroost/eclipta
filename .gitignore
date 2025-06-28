@@ -1,0 +1,40 @@
+# === Rust build & cargo files ===
+/target/
+**/target/
+
+# === IDE/editor folders ===
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === OS generated files ===
+.DS_Store
+Thumbs.db
+
+# === Logs, temp, runtime ===
+*.log
+/run/eclipta/
+*.json
+
+# === Byproducts ===
+*.bak
+*.old
+
+# === Environment files ===
+.env
+.env.*
+
+# === Rust/Cargo specific ===
+Cargo.lock # optional: keep it if you're building a binary (e.g., CLI), not a library
+/.cargo/
+
+# === Coverage/test tools ===
+htmlcov/
+coverage/
+*.lcov
+
+# === Debug/profiler ===
+*.profraw
+*.profdata
+flamegraph.svg
