@@ -18,3 +18,4 @@ pub mod alerts;
 pub mod kill_agent;
 pub mod update_agent;
 pub mod version;
+pub mod sync_agents;
