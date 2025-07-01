@@ -1,52 +1,110 @@
-#  Eclipta – Self-Hosted Observability Platform for Linux Systems
-![Rust](https://img.shields.io/badge/Rust-High%20Performance-orange)
-![Status](https://img.shields.io/badge/status-Alpha-yellow)
+# eclipta CLI — Self-Hosted Observability Platform
 
-> A fast, self-hosted, and modular observability toolkit written in Rust with support for CLI, agent daemon, live system metrics, and future eBPF integrations.
-
----
+**eclipta** is a lightweight, modular CLI tool for managing, monitoring, and observing Linux agents across your infrastructure. Built in Rust, eclipta enables DevOps, sysadmins, and SREs to inspect system health, manage agent lifecycles, and capture real-time performance metrics — entirely self-hosted.
 
 ## Features
 
+- Agent lifecycle control (`load`, `unload`, `restart`, `kill`, `update`)
+- Live system metrics (`cpu`, `memory`, `disk`, `network`, `processes`)
+- Dynamic agent discovery (`/run/eclipta/*.json`)
+- Snapshot syncing to `/etc/eclipta/agents/snapshot.json`
+- Configuration management with safe JSON storage
+- Realtime monitoring terminal UI (`monitor`, `live`)
+- Alert handling and health summaries
+- Zero external dependencies — Rust-native
 
-###  Agent Management
-- `agents` – List and inspect all connected agents
-- `inspect-agent` – View detailed info about a specific agent
-- `restart-agent` – Restart an agent service
-- `kill-agent` – Kill and stop an agent immediately
-- `update-agent` – Upgrade agent binary (with version, force, restart flags)
+## Installation
 
-###  System Monitoring
-- `live` – Real-time terminal monitoring (CPU, memory, disk, etc.)
-- `monitor` – Dashboard view of all agents
-- `watch-cpu` – Live graph of CPU usage for one agent
+### Build from source:
+```bash
+git clone https://github.com/stackroost/eclipta.git
+cd eclipta/cli
+cargo build --release
+sudo cp target/release/eclipta /usr/local/bin/eclipta
+```
 
-### Metrics & Logs
-- `logs` – View global system logs
-- `agent-logs` – View logs for a specific agent (with tail/follow)
-- `status` – Show system-wide status
+## Usage
 
-### Configuration
-- `config` – Get/set configuration for an agent (e.g. thresholds, intervals)
-- `version` – Show current CLI version and agent version
-- `alerts` – List agents in alert state
+```bash
+eclipta <command> [options]
+```
 
-###  Utilities
-- `load` / `unload` – Load or unload eBPF programs
-- `inspect` – Inspect active kernel programs
-- `daemon` – Run eclipta agent heartbeat writer in the background
-- `ping-all` – Ping and verify all agent health
-- `welcome` – Display the CLI welcome screen
+### Common Commands:
 
----
+| Command           | Description                                  |
+|-------------------|----------------------------------------------|
+| `load`            | Load/start an agent binary                   |
+| `unload`          | Gracefully unload agent                      |
+| `restart-agent`   | Restart agent process                        |
+| `kill-agent`      | Forcefully kill agent                        |
+| `update-agent`    | Replace agent binary with updated version    |
+| `monitor`         | Interactive terminal UI of all agents       |
+| `live`            | Stream real-time agent logs + stats          |
+| `logs`            | View system or agent logs                    |
+| `agent-logs`      | Tail logs from a specific agent              |
+| `watch-cpu`       | Monitor CPU usage of an agent                |
+| `alerts`          | List all agents currently in alert state     |
+| `agents`          | Show all detected agents                     |
+| `inspect-agent`   | Print detailed stats of a specific agent     |
+| `inspect`         | Inspect eclipta CLI environment              |
+| `ping-all`        | Check if all agents are alive/responding     |
+| `sync-agents`     | Scan `/run/eclipta` and sync active agents   |
+| `config`          | Get/set/list CLI configuration options       |
+| `version`         | Show current CLI version                     |
+| `welcome`         | Show welcome message and setup hint          |
+| `status`          | Show CLI runtime status                      |
 
-## Built With
+## Agent Snapshot Format
 
--  [Rust](https://www.rust-lang.org/)
--  [aya](https://github.com/aya-rs/aya) – eBPF for Rust
--  [tui](https://github.com/fdehau/tui-rs) – Terminal UI framework
--  [sysinfo](https://docs.rs/sysinfo) – System stats
--  [clap](https://docs.rs/clap) – Command-line interface
--  [chrono](https://docs.rs/chrono) – Timestamps and formatting
+Synced to: `/etc/eclipta/agents/snapshot.json`
 
----
+```json
+[
+  {
+    "id": "agent-001",
+    "hostname": "host1",
+    "version": "0.2.1",
+    "cpu_load": [0.39, 1.09, 1.38],
+    "mem_used_mb": 4865,
+    "disk_used_mb": 79177,
+    "net_rx_kb": 247187,
+    "alert": false,
+    "last_seen": "2025-07-01T16:38:29Z"
+  }
+]
+```
+
+## Development
+
+To run locally:
+
+```bash
+cargo run -- monitor
+```
+
+## Roadmap
+
+- [ ] `install-agent` from GitHub Releases
+- [ ] Remote API mode (multi-node)
+- [ ] TUI dashboard for snapshot view
+- [ ] Plugin architecture for collectors
+
+## License
+
+MIT © 2025 Mahesh Bhatiya
+
+## Project Structure
+
+```
+/cli/
+  src/
+    commands/
+    utils/
+    main.rs         # CLI parser & dispatch
+/run/eclipta/       # Live agent metrics (.json)
+/etc/eclipta/       # Persistent config + snapshot.json
+```
+
+## Contributing
+
+PRs welcome! If you're building tooling for observability or Linux system automation, open an issue or suggest improvements.
