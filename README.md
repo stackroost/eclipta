@@ -17,7 +17,7 @@
 
 ### Build from source:
 ```bash
-git clone https://github.com/yourorg/eclipta.git
+git clone https://github.com/stackroost/eclipta.git
 cd eclipta/cli
 cargo build --release
 sudo cp target/release/eclipta /usr/local/bin/eclipta
