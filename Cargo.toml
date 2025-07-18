@@ -1,8 +1,9 @@
 [workspace]
 members = [
-    "cli",
+    "eclipta-cli",
     "eclipta-agents",
-    "ebpf-demo/user"
+    "ebpf-demo/user",
+    "backend" 
 ]
 
 resolver = "2"
