@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState({})
+  const { setToken } = useAuth()
+  const navigate = useNavigate()
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-
     try {
       const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
@@ -15,12 +19,24 @@ function Login() {
         body: JSON.stringify({ username, password }),
       })
 
-      const text = await res.text()
-      setMessage(text)
+      if (!res.ok) {
+        const errorText = await res.text()
+        setMessage('Login failed: ' + errorText)
+        return
+      }
+
+      const data = await res.json()
+      if (data.token) {
+        setToken(data.token)
+        navigate('/dashboard')
+      } else {
+        setMessage('Login failed: no token in response')
+      }
     } catch (err) {
       setMessage('Login error')
     }
   }
+
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -60,12 +76,6 @@ function Login() {
             Sign In
           </button>
         </form>
-
-        {message && (
-          <div className="text-center text-sm text-gray-600 mt-2">
-            {message}
-          </div>
-        )}
       </div>
     </div>
   )
