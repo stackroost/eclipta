@@ -51,12 +51,12 @@ const Sidebar = () => {
         </div>
         <ul>
           {[
-            { icon: FiHome, text: 'Dashboard' },
-            { icon: FiServer, text: 'Servers' },
-            { icon: FiSettings, text: 'Settings' },
+            { icon: FiHome, text: 'Dashboard', path: '/dashboard' },
+            { icon: FiServer, text: 'Agents', path: '/agents' },
+            { icon: FiSettings, text: 'Settings', path: '/settings' },
           ].map((item, index) => (
             <li key={index} className="mb-4">
-              <a href="#" className="flex items-center p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <a href={item.path} className="flex items-center p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <motion.div variants={iconVariants} animate={isOpen ? 'open' : 'closed'}>
                   <item.icon className="text-2xl" />
                 </motion.div>

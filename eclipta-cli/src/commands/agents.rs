@@ -28,7 +28,7 @@ pub fn handle_agents(opts: AgentOptions) {
     let files = match fs::read_dir(&dir) {
         Ok(f) => f,
         Err(e) => {
-            error(&format!("❌ Failed to read /run/eclipta: {}", e));
+            error(&format!("Failed to read /run/eclipta: {}", e));
             return;
         }
     };
@@ -36,7 +36,12 @@ pub fn handle_agents(opts: AgentOptions) {
     let mut agents = Vec::new();
 
     for entry in files.flatten() {
-        if let Ok(content) = fs::read_to_string(entry.path()) {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+
+        if let Ok(content) = fs::read_to_string(&path) {
             if let Ok(agent) = serde_json::from_str::<AgentStatus>(&content) {
                 agents.push(agent);
             }
@@ -54,15 +59,24 @@ pub fn handle_agents(opts: AgentOptions) {
         return;
     }
 
-    success("🟢 Connected Agents:");
+    success("Connected Agents:");
     for agent in &agents {
+        let status = agent.status_string();
+        let badge = match status {
+            "online" => "🟢",
+            "offline" => "🔴",
+            _ => "❓",
+        };
+
         println!(
-            "• [{}] {} - {} (uptime: {}s)",
-            agent.status_string(),
+            "• [{} {}] {} - {} (uptime: {}s)",
+            badge,
+            status,
             agent.id,
             agent.hostname,
             agent.uptime_secs
         );
+
         if opts.verbose {
             println!("   └─ Kernel: {} | Version: {}", agent.kernel, agent.version);
         }
@@ -71,6 +85,21 @@ pub fn handle_agents(opts: AgentOptions) {
 
 impl AgentStatus {
     fn status_string(&self) -> &'static str {
-        "online"
+        let pid_path = PathBuf::from(format!("/run/eclipta/{}.pid", self.id));
+
+        let pid = match fs::read_to_string(&pid_path) {
+            Ok(content) => match content.trim().parse::<i32>() {
+                Ok(n) => n,
+                Err(_) => return "offline",
+            },
+            Err(_) => return "offline",
+        };
+
+        let proc_path = PathBuf::from(format!("/proc/{}", pid));
+        if proc_path.exists() {
+            "online"
+        } else {
+            "offline"
+        }
     }
 }
