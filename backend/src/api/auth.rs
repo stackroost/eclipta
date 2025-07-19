@@ -1,10 +1,10 @@
 use axum::{
     routing::post,
     Json, Router,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
-use serde::Deserialize;
-use crate::services::pam_auth;
+use serde::{Deserialize, Serialize};
+use crate::services::{pam_auth, jwt::generate_token};
 
 #[derive(Deserialize)]
 struct LoginRequest {
@@ -12,17 +12,35 @@ struct LoginRequest {
     password: String,
 }
 
-async fn login_handler(Json(payload): Json<LoginRequest>) -> impl IntoResponse {
+#[derive(Serialize)]
+struct LoginResponse {
+    token: String,
+    message: String,
+}
+
+async fn login_handler(Json(payload): Json<LoginRequest>) -> Response {
     match pam_auth(&payload.username, &payload.password) {
-        Ok(true) => "Authenticated: root/sudo",
-        Ok(false) => "Not root/sudo",
+        Ok(true) => {
+            let token = generate_token(&payload.username, true).unwrap_or_else(|_| "".into());
+            Json(LoginResponse {
+                token,
+                message: "Authenticated: successfully".into(),
+            }).into_response()
+        }
+        Ok(false) => Json(LoginResponse {
+            token: "".into(),
+            message: "Not root/sudo".into(),
+        }).into_response(),
         Err(e) => {
             eprintln!("Auth error: {e}");
-            "Login failed"
+            Json(LoginResponse {
+                token: "".into(),
+                message: "Login failed".into(),
+            }).into_response()
         }
     }
 }
 
-pub fn routes() -> Router {
-    Router::new().route("/login", post(login_handler)) // /api/auth/login
+pub fn  routes() -> axum::Router {
+    Router::new().route("/login", post(login_handler))
 }

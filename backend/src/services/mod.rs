@@ -1,12 +1,15 @@
+
 use pam::Authenticator;
 use std::process::Command;
 use users;
+pub mod jwt;
+
 
 pub fn pam_auth(username: &str, password: &str) -> Result<bool, String> {
     let mut auth = Authenticator::with_password("login").map_err(|e| e.to_string())?;
 
     let handler = auth.get_handler();
-    handler.set_credentials(username, password); // <- just call it, no check
+    handler.set_credentials(username, password);
 
     auth.authenticate().map_err(|e| e.to_string())?;
 
