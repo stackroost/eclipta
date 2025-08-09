@@ -2,8 +2,7 @@
 members = [
     "eclipta-cli",
     "eclipta-agents",
-    "ebpf-demo/user",
-    "backend" 
+    "ebpf-demo/user"
 ]
 
 resolver = "2"
