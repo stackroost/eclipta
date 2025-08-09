@@ -58,6 +58,7 @@ enum Commands {
     UpdateAgent(UpdateAgentOptions),
     Version(VersionOptions),
     SyncAgents(SyncAgentsOptions),
+    Run(commands::run::RunOptions),
 }
 fn main() {
     let cli = Cli::parse();
@@ -119,6 +120,10 @@ fn main() {
         Commands::SyncAgents(opts) => {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(handle_sync_agents(opts)).unwrap();
+        }
+        Commands::Run(opts) => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(commands::run::handle_run(opts));
         }
     }
 }

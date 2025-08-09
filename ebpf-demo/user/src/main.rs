@@ -1,27 +1,35 @@
-use aya::{Ebpf, programs::TracePoint};
-use std::convert::TryInto;
-use std::error::Error;
-use std::fs;
-use std::thread;
+use aya::{Bpf, programs::TracePoint};
+use aya::maps::HashMap;
 use std::time::Duration;
+use tokio::time;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    // Load the eBPF ELF at runtime
-    let data = fs::read("../target/trace_execve.o")?;
-   let mut bpf = Ebpf::load(&data)?;
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
+    // Load the compiled eBPF object
+    let mut bpf = Bpf::load_file(
+        "target/bpfel-unknown-none/release/deps/ebpf.o"
+    )?;
 
-
-    let program: &mut TracePoint = bpf
-        .program_mut("trace_execve")
-        .ok_or("program not found")?
+    // Attach to the sched:sched_switch tracepoint
+    let program: &mut TracePoint = bpf.program_mut("cpu_usage")
+        .unwrap()
         .try_into()?;
-
     program.load()?;
-    program.attach("syscalls", "sys_enter_execve")?;
+    program.attach("sched", "sched_switch")?;
 
-    println!("trace_execve attached to sys_enter_execve");
+    // Get the eBPF map for CPU stats
+    let mut cpu_stats: HashMap<_, u32, u64> = HashMap::try_from(
+        bpf.map_mut("CPU_STATS")?
+    )?;
 
+    println!("Tracking per-CPU usage in real time (Ctrl+C to exit)");
     loop {
-        thread::sleep(Duration::from_secs(60));
+        println!("---------------------------");
+        for cpu_id in 0..num_cpus::get() as u32 {
+            if let Ok(val) = cpu_stats.get(&cpu_id, 0) {
+                println!("CPU {}: {} ns active", cpu_id, val);
+            }
+        }
+        time::sleep(Duration::from_secs(1)).await;
     }
 }

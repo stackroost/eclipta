@@ -2,16 +2,19 @@ use aya::{programs::TracePoint, EbpfLoader};
 use clap::Args;
 use std::path::PathBuf;
 use crate::utils::logger::{info, success, error};
+use nix::sys::resource::{setrlimit, Resource, RLIM_INFINITY};
+use nix::unistd::Uid;
 
 #[derive(Args, Debug)]
 pub struct LoadOptions {
-    #[arg(short, long, default_value = "target/trace_execve.o")]
+    #[arg(short, long, default_value = "/etc/eclipta/bin/ebpf.so")]
     pub program: PathBuf,
 
-    #[arg(short, long, default_value = "trace_execve")]
+    #[arg(short, long, default_value = "cpu_usage")]
     pub name: String,
 
-    #[arg(short, long, default_value = "syscalls/sys_enter_execve")]
+    /// Tracepoint in the form "category:name" or "category/name" (e.g., "sched:sched_switch")
+    #[arg(short = 't', long, default_value = "sched:sched_switch")]
     pub tracepoint: String,
 
     #[arg(long)]
@@ -33,15 +36,45 @@ pub fn handle_load(opts: LoadOptions) {
         return;
     }
 
+    if !Uid::effective().is_root() {
+        error("This command must be run as root to create BPF maps and attach programs. Try: sudo eclipta load ...");
+        return;
+    }
+
+    // Raise memlock limit to avoid map allocation failures on older kernels
+    let _ = setrlimit(Resource::RLIMIT_MEMLOCK, RLIM_INFINITY, RLIM_INFINITY);
+
+    // Parse tracepoint category/name
+    let (tp_category, tp_name) = {
+        let s = opts.tracepoint.replace('/', ":");
+        let mut parts = s.splitn(2, ':');
+        let cat = parts.next().unwrap_or("").trim().to_string();
+        let nam = parts.next().unwrap_or("").trim().to_string();
+        if cat.is_empty() || nam.is_empty() {
+            error("Tracepoint must be in the form 'category:name' (e.g., 'sched:sched_switch')");
+            return;
+        }
+        (cat, nam)
+    };
+
     if opts.dry_run {
         success("✓ Dry run mode - ELF validated and options parsed.");
+        if opts.verbose {
+            info(&format!(
+                "Program '{}' from '{}' would attach to '{}:{}'",
+                opts.name,
+                opts.program.display(),
+                tp_category,
+                tp_name
+            ));
+        }
         return;
     }
 
     if opts.verbose {
         info(&format!("Loading program: {}", opts.name));
         info(&format!("From ELF file: {}", opts.program.display()));
-        info(&format!("Target tracepoint: {}", opts.tracepoint));
+        info(&format!("Target tracepoint: {}:{}", tp_category, tp_name));
     }
 
     match EbpfLoader::new().load_file(&opts.program) {
@@ -55,18 +88,18 @@ pub fn handle_load(opts: LoadOptions) {
                             return;
                         }
 
-                        if let Err(e) = tp.attach(&opts.tracepoint, "") {
+                        if let Err(e) = tp.attach(&tp_category, &tp_name) {
                             error(&format!("Failed to attach to tracepoint: {}", e));
                             return;
                         }
 
                         if opts.json {
                             println!(
-                                "{{ \"status\": \"ok\", \"program\": \"{}\", \"tracepoint\": \"{}\" }}",
-                                opts.name, opts.tracepoint
+                                "{{ \"status\": \"ok\", \"program\": \"{}\", \"tracepoint\": \"{}:{}\" }}",
+                                opts.name, tp_category, tp_name
                             );
                         } else {
-                            success(&format!("✓ Program '{}' attached to '{}'", opts.name, opts.tracepoint));
+                            success(&format!("✓ Program '{}' attached to '{}:{}'", opts.name, tp_category, tp_name));
                         }
                     } else {
                         error("Could not convert program to TracePoint");

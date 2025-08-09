@@ -1,16 +1,39 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Build eBPF program from workspace root
-target_dir="target/bpfel-unknown-none/release"
+ROOT_DIR="/eclipta"
+BIN_DIR="$ROOT_DIR/bin"
+PROJ_DIR="$ROOT_DIR/ebpf-demo"
 
-cargo build --release \
-  --package ebpf \
-  --target bpfel-unknown-none \
-  -Z build-std=core
+cd "$PROJ_DIR"
 
-# Copy ELF for use by user-space
-mkdir -p target
-cp ${target_dir}/trace_execve target/trace_execve.o
+rustup toolchain install nightly --profile minimal || true
+rustup target add bpfel-unknown-none --toolchain nightly || true
 
-echo "eBPF ELF ready at: target/trace_execve.o"
+if ! command -v bpf-linker >/dev/null 2>&1; then
+  cargo +nightly install bpf-linker --locked
+fi
+
+cargo +nightly build -Z build-std=core --target bpfel-unknown-none -p ebpf --release
+
+OUT_DIR="$PROJ_DIR/target/bpfel-unknown-none/release"
+OBJ=""
+
+if [[ -f "$OUT_DIR/libebpf.so" ]]; then
+  OBJ="$OUT_DIR/libebpf.so"
+else
+  # Fallback to the newest non-bitcode .o in release (exclude deps/*.o which are bitcode)
+  CANDIDATE=$(find "$OUT_DIR" -maxdepth 1 -type f -name "*.o" -printf "%T@ %p\n" | sort -nr | head -n1 | awk '{print $2}')
+  if [[ -n "${CANDIDATE:-}" ]] && file "$CANDIDATE" | grep -q "ELF"; then
+    OBJ="$CANDIDATE"
+  fi
+fi
+
+if [[ -z "${OBJ:-}" ]]; then
+  echo "No ELF eBPF object found under $OUT_DIR" >&2
+  exit 1
+fi
+
+mkdir -p "$BIN_DIR"
+cp -f "$OBJ" "$BIN_DIR/ebpf.so"
+echo "Built and moved: $BIN_DIR/ebpf.so" 
