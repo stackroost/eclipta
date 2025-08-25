@@ -13,7 +13,7 @@ console = "0.15"
 nix = { version = "0.30", features = ["user", "signal", "process", "resource"] }
 anyhow = "1"
 log = "0.4"
-tokio = { version = "1.38", features = ["rt-multi-thread", "time", "signal", "fs", "io-util"] }
+tokio = { version = "1.38", features = ["rt-multi-thread", "time", "signal", "fs", "io-util", "macros" ] }
 byteorder = "1"
 bytes = "1.10.1"
 serde_json = "1.0"
@@ -24,3 +24,9 @@ crossterm = "0.27"
 chrono = { version = "0.4", features = ["serde"] }
 hostname = "0.4.1"
 humantime = "2.1"
+dirs = "5.0"
+# sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "macros"] }
+sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio-rustls"] }
+dotenvy = "0.15"
+uuid = { version = "1.8", features = ["v4"] }
+colored = "2.1"

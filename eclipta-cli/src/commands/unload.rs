@@ -1,18 +1,31 @@
-use crate::utils::logger::{success, error};
+use crate::utils::logger::{success, error, info};
+use crate::utils::paths::{default_bin_object, default_state_path};
+use crate::utils::state::{load_state, save_state};
 use aya::Ebpf;
 use clap::Args;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct UnloadOptions {
-    #[arg(short, long, default_value = "target/trace_execve.o")]
-    pub program: PathBuf,
+    /// Path to eBPF ELF (defaults to $ECLIPTA_BIN or ./bin/ebpf.so)
+    #[arg(short, long)]
+    pub program: Option<PathBuf>,
 
-    #[arg(short, long, default_value = "trace_execve")]
-    pub name: String,
+    /// Program name inside ELF
+    #[arg(short, long)]
+    pub name: Option<String>,
 
-    #[arg(short, long, default_value = "syscalls/sys_enter_execve")]
-    pub tracepoint: String,
+    /// Tracepoint in the form "category:name" or "category/name"
+    #[arg(short = 't', long)]
+    pub tracepoint: Option<String>,
+
+    /// State file to update (default XDG local data dir)
+    #[arg(long)]
+    pub state_file: Option<PathBuf>,
+
+    /// Unpin pinned objects from bpffs
+    #[arg(long)]
+    pub unpin: bool,
 
     #[arg(long)]
     pub json: bool,
@@ -22,17 +35,28 @@ pub struct UnloadOptions {
 }
 
 pub fn handle_unload(opts: UnloadOptions) {
-    if !opts.program.exists() {
-        error("Missing compiled eBPF program. Run `eclipta load` first.");
+    let program_path = opts.program.unwrap_or_else(default_bin_object);
+    let state_file = opts.state_file.unwrap_or_else(default_state_path);
+
+    if !program_path.exists() {
+        error("Missing compiled eBPF program.");
         return;
     }
 
-    if opts.verbose {
-        println!("Attempting to unload program: {}", opts.name);
-        println!("ELF path: {:?}", opts.program);
-    }
+    let name = if let Some(n) = opts.name.clone() { n } else {
+        // fallback to last record from state
+        let st = load_state(&state_file);
+        if let Some(last) = st.attachments.last() {
+            last.name.clone()
+        } else {
+            error("No program name provided and no state available.");
+            return;
+        }
+    };
 
-    let mut bpf = match Ebpf::load_file(&opts.program) {
+    if opts.verbose { info(&format!("Attempting to unload program: {}", name)); }
+
+    let bpf = match Ebpf::load_file(&program_path) {
         Ok(bpf) => bpf,
         Err(e) => {
             error(&format!("Failed to load ELF: {}", e));
@@ -40,24 +64,27 @@ pub fn handle_unload(opts: UnloadOptions) {
         }
     };
 
-    if bpf.program_mut(&opts.name).is_none() {
+    if bpf.program(&name).is_none() {
         error("Program not found in ELF");
         return;
     }
 
-    // Dropping bpf unloads all programs
-    drop(bpf);
+    // Update state: remove records matching name
+    let mut st = load_state(&state_file);
+    let removed: Vec<_> = st.attachments.iter().filter(|r| r.name == name).cloned().collect();
+    st.attachments.retain(|r| r.name != name);
+    let _ = save_state(&state_file, st);
 
-    if opts.verbose {
-        println!("Program '{}' unloaded by dropping Ebpf struct", opts.name);
+    if opts.unpin {
+        for rec in removed {
+            if let Some(pp) = rec.pinned_prog { let _ = std::fs::remove_file(pp); }
+            for m in rec.pinned_maps { let _ = std::fs::remove_file(m); }
+        }
     }
 
     if opts.json {
-        println!(
-            "{{ \"status\": \"ok\", \"unloaded\": true, \"program\": \"{}\" }}",
-            opts.name
-        );
+        println!("{{ \"status\": \"ok\", \"unloaded\": true, \"program\": \"{}\" }}", name);
     } else {
-        success(&format!("✓ Unloaded program '{}'", opts.name));
+        success(&format!("✓ Unloaded program '{}'", name));
     }
 }

@@ -3,6 +3,9 @@ use bytes::BytesMut;
 use clap::Args;
 use std::{convert::TryInto, path::PathBuf, time::Duration, mem};
 use tokio::{signal, time};
+use crate::utils::paths::default_bin_object;
+use nix::sys::resource::{setrlimit, Resource, RLIM_INFINITY};
+use nix::unistd::Uid;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -13,17 +16,21 @@ pub struct ExecEvent {
 
 #[derive(Args, Debug)]
 pub struct RunOptions {
-    #[arg(short, long, default_value = "ebpf-demo/target/bpfel-unknown-none/release/libebpf.so")]
-    pub program: PathBuf,
+    /// Path to eBPF ELF (defaults to $ECLIPTA_BIN or ./bin/ebpf.so)
+    #[arg(short, long)]
+    pub program: Option<PathBuf>,
 
-    #[arg(short, long, default_value = "trace_execve")]
+    /// Program name inside ELF
+    #[arg(short, long, default_value = "cpu_usage")]
     pub name: String,
 
-    #[arg(short, long, default_value = "syscalls/sys_enter_execve")]
+    /// Tracepoint in the form "category:name" or "category/name" (e.g., "sched:sched_switch")
+    #[arg(short, long, default_value = "sched:sched_switch")]
     pub tracepoint: String,
 
-    #[arg(short = 'm', long, default_value = "trace_execve_events")]
-    pub map: String,
+    /// PerfEventArray map name to stream (optional)
+    #[arg(short = 'm', long)]
+    pub map: Option<String>,
 
     #[arg(long)]
     pub execve_format: bool,
@@ -33,12 +40,21 @@ pub struct RunOptions {
 }
 
 pub async fn handle_run(opts: RunOptions) {
-    if !opts.program.exists() {
-        eprintln!("Missing compiled eBPF program at {}", opts.program.display());
+    if !Uid::effective().is_root() {
+        eprintln!("This command must be run as root. Try: sudo eclipta run ...");
         return;
     }
 
-    let mut bpf = match EbpfLoader::new().load_file(&opts.program) {
+    // Bump memlock to avoid failures on older kernels
+    let _ = setrlimit(Resource::RLIMIT_MEMLOCK, RLIM_INFINITY, RLIM_INFINITY);
+
+    let program_path = opts.program.clone().unwrap_or_else(default_bin_object);
+    if !program_path.exists() {
+        eprintln!("Missing compiled eBPF program at {}", program_path.display());
+        return;
+    }
+
+    let mut bpf = match EbpfLoader::new().load_file(&program_path) {
         Ok(b) => b,
         Err(e) => {
             eprintln!("Failed to load ELF: {}", e);
@@ -55,21 +71,25 @@ pub async fn handle_run(opts: RunOptions) {
                     return;
                 }
             };
-            let parts: Vec<&str> = opts.tracepoint.split('/').collect();
-            if parts.len() != 2 {
-                eprintln!("Tracepoint must be 'category/name', got '{}'", opts.tracepoint);
+            // Support both category:name and category/name
+            let s = opts.tracepoint.replace('/', ":");
+            let mut parts = s.splitn(2, ':');
+            let cat = parts.next().unwrap_or("");
+            let nam = parts.next().unwrap_or("");
+            if cat.is_empty() || nam.is_empty() {
+                eprintln!("Tracepoint must be 'category:name', got '{}'", opts.tracepoint);
                 return;
             }
             if let Err(e) = tp.load() {
                 eprintln!("Failed to load program: {}", e);
                 return;
             }
-            if let Err(e) = tp.attach(parts[0], parts[1]) {
+            if let Err(e) = tp.attach(cat, nam) {
                 eprintln!("Failed to attach to tracepoint '{}': {}", opts.tracepoint, e);
                 return;
             }
             if opts.verbose {
-                println!("✓ Attached '{}' to '{}'", opts.name, opts.tracepoint);
+                println!("✓ Attached '{}' to '{}:{}'", opts.name, cat, nam);
             }
         }
         None => {
@@ -78,68 +98,73 @@ pub async fn handle_run(opts: RunOptions) {
         }
     }
 
-    let map = match bpf.take_map(&opts.map) {
-        Some(m) => m,
-        None => {
-            eprintln!("Map '{}' not found in ELF", opts.map);
-            return;
-        }
-    };
-    let mut perf_array: PerfEventArray<_> = match map.try_into() {
-        Ok(pa) => pa,
-        Err(_) => {
-            eprintln!("Map '{}' is not a PerfEventArray", opts.map);
-            return;
-        }
-    };
-
-    println!("Streaming events from '{}' (Ctrl+C to exit)", opts.map);
-
-    for cpu_id in online_cpus().unwrap_or_default() {
-        let mut buf = match perf_array.open(cpu_id, None) {
-            Ok(b) => b,
-            Err(e) => {
-                eprintln!("Failed to open perf buffer on CPU {}: {}", cpu_id, e);
-                continue;
+    // If a map was provided, stream events; otherwise just wait until Ctrl+C
+    if let Some(map_name) = opts.map.as_ref() {
+        let map = match bpf.take_map(map_name) {
+            Some(m) => m,
+            None => {
+                eprintln!("Map '{}' not found in ELF", map_name);
+                return;
+            }
+        };
+        let mut perf_array: PerfEventArray<_> = match map.try_into() {
+            Ok(pa) => pa,
+            Err(_) => {
+                eprintln!("Map '{}' is not a PerfEventArray", map_name);
+                return;
             }
         };
 
-        let execve_fmt = opts.execve_format;
-        tokio::spawn(async move {
-            let mut bufs = vec![BytesMut::with_capacity(1024)];
-            loop {
-                match buf.read_events(&mut bufs) {
-                    Ok(events) => {
-                        for rec in &bufs[..events.read] {
-                            if execve_fmt && rec.len() >= mem::size_of::<ExecEvent>() {
-                                let ptr = rec.as_ptr() as *const ExecEvent;
-                                let ev = unsafe { *ptr };
-                                let comm = std::str::from_utf8(&ev.comm)
-                                    .unwrap_or("")
-                                    .trim_end_matches(char::from(0))
-                                    .to_string();
-                                println!("exec pid={} comm={}", ev.pid, comm);
-                            } else if let Ok(s) = std::str::from_utf8(&rec) {
-                                println!("{}", s.trim_end_matches(char::from(0)));
-                            } else {
-                                println!(
-                                    "{}",
-                                    rec.iter()
-                                        .map(|b| format!("{:02x}", b))
-                                        .collect::<Vec<_>>()
-                                        .join("")
-                                );
+        println!("Streaming events from '{}' (Ctrl+C to exit)", map_name);
+
+        for cpu_id in online_cpus().unwrap_or_default() {
+            let mut buf = match perf_array.open(cpu_id, None) {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("Failed to open perf buffer on CPU {}: {}", cpu_id, e);
+                    continue;
+                }
+            };
+
+            let execve_fmt = opts.execve_format;
+            tokio::spawn(async move {
+                let mut bufs = vec![BytesMut::with_capacity(1024)];
+                loop {
+                    match buf.read_events(&mut bufs) {
+                        Ok(events) => {
+                            for rec in &bufs[..events.read] {
+                                if execve_fmt && rec.len() >= mem::size_of::<ExecEvent>() {
+                                    let ptr = rec.as_ptr() as *const ExecEvent;
+                                    let ev = unsafe { *ptr };
+                                    let comm = std::str::from_utf8(&ev.comm)
+                                        .unwrap_or("")
+                                        .trim_end_matches(char::from(0))
+                                        .to_string();
+                                    println!("exec pid={} comm={}", ev.pid, comm);
+                                } else if let Ok(s) = std::str::from_utf8(&rec) {
+                                    println!("{}", s.trim_end_matches(char::from(0)));
+                                } else {
+                                    println!(
+                                        "{}",
+                                        rec.iter()
+                                            .map(|b| format!("{:02x}", b))
+                                            .collect::<Vec<_>>()
+                                            .join("")
+                                    );
+                                }
+                            }
+                            if events.lost > 0 {
+                                eprintln!("Lost {} events (perf buffer overflow)", events.lost);
                             }
                         }
-                        if events.lost > 0 {
-                            eprintln!("Lost {} events (perf buffer overflow)", events.lost);
-                        }
+                        Err(e) => eprintln!("read_events error: {}", e),
                     }
-                    Err(e) => eprintln!("read_events error: {}", e),
+                    time::sleep(Duration::from_millis(100)).await;
                 }
-                time::sleep(Duration::from_millis(100)).await;
-            }
-        });
+            });
+        }
+    } else {
+        println!("Attached. No map provided for streaming. Waiting (Ctrl+C to exit)...");
     }
 
     if let Err(e) = signal::ctrl_c().await {

@@ -1,14 +1,15 @@
-use aya::{Ebpf};
+use aya::Ebpf;
 use clap::Args;
 use std::path::PathBuf;
 use crate::utils::logger::{info, error};
 use serde_json;
-
+use crate::utils::paths::default_bin_object;
 
 #[derive(Args, Debug)]
 pub struct InspectOptions {
-    #[arg(short, long, default_value = "target/trace_execve.o")]
-    pub program: PathBuf,
+    /// Path to eBPF ELF (defaults to $ECLIPTA_BIN or ./bin/ebpf.so)
+    #[arg(short, long)]
+    pub program: Option<PathBuf>,
 
     #[arg(long)]
     pub json: bool,
@@ -18,12 +19,13 @@ pub struct InspectOptions {
 }
 
 pub fn handle_inspect(opts: InspectOptions) {
-    if !opts.program.exists() {
+    let program_path = opts.program.unwrap_or_else(default_bin_object);
+    if !program_path.exists() {
         error("Missing compiled eBPF program.");
         return;
     }
 
-    let bpf = match Ebpf::load_file(&opts.program) {
+    let bpf = match Ebpf::load_file(&program_path) {
         Ok(b) => b,
         Err(e) => {
             error(&format!("Failed to parse ELF: {}", e));
@@ -36,21 +38,16 @@ pub fn handle_inspect(opts: InspectOptions) {
 
     if opts.json {
         let output = serde_json::json!({
-            "elf": opts.program.display().to_string(),
+            "elf": program_path.display().to_string(),
             "programs": programs,
             "maps": maps,
         });
         println!("{}", serde_json::to_string_pretty(&output).unwrap());
     } else {
-        info(&format!("✅ ELF: {}", opts.program.display()));
+        info(&format!("✅ ELF: {}", program_path.display()));
         println!("Programs:");
-        for name in &programs {
-            println!("  - {}", name);
-        }
-
+        for name in &programs { println!("  - {}", name); }
         println!("Maps:");
-        for name in &maps {
-            println!("  - {}", name);
-        }
+        for name in &maps { println!("  - {}", name); }
     }
 }

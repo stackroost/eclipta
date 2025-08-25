@@ -1,29 +1,24 @@
 mod commands;
 mod utils;
+mod db;
 
 use crate::commands::logs::LogOptions;
-use clap::{ Parser, Subcommand };
-use commands::agent_logs::{ handle_agent_logs, AgentLogsOptions };
-use commands::agents::{ handle_agents, AgentOptions };
-use commands::agents_inspect::{ handle_inspect_agent, InspectAgentOptions };
+use clap::{Parser, Subcommand};
+use commands::alerts::handle_alerts;
+use commands::check_db::{handle_check_db, CheckDbOptions};
+use commands::config::{handle_config, ConfigOptions};
 use commands::daemon::handle_daemon;
-use commands::inspect::{ handle_inspect, InspectOptions };
-use commands::live::handle_live;
+use commands::inspect::{handle_inspect, InspectOptions};
 use commands::monitor::handle_monitor;
 use commands::ping_all;
-use commands::alerts::handle_alerts;
-use commands::restart_agent::{ handle_restart_agent, RestartAgentOptions };
-use commands::config::{ handle_config, ConfigOptions };
-use commands::watch_cpu::{ handle_watch_cpu, WatchCpuOptions };
-use commands::kill_agent::{ handle_kill_agent, KillAgentOptions };
-use commands::update_agent::{ handle_update_agent, UpdateAgentOptions };
-use commands::version::{ handle_version, VersionOptions };
-use commands::sync_agents::{ handle_sync_agents, SyncAgentsOptions };
+use commands::upload::{handle_upload, UploadOptions};
+use commands::version::{handle_version, VersionOptions};
+use commands::watch_cpu::{handle_watch_cpu, WatchCpuOptions};
 use commands::{
     load::handle_load,
     logs::handle_logs,
     status::run_status,
-    unload::{ handle_unload, UnloadOptions },
+    unload::{handle_unload, UnloadOptions},
     welcome::run_welcome,
 };
 
@@ -43,24 +38,20 @@ enum Commands {
     Logs(LogOptions),
     Unload(UnloadOptions),
     Inspect(InspectOptions),
-    InspectAgent(InspectAgentOptions),
-    RestartAgent(RestartAgentOptions),
-    Agents(AgentOptions),
-    AgentLogs(AgentLogsOptions),
-    Live,
     Daemon,
     Monitor,
     PingAll,
     WatchCpu(WatchCpuOptions),
     Config(ConfigOptions),
     Alerts,
-    KillAgent(KillAgentOptions),
-    UpdateAgent(UpdateAgentOptions),
     Version(VersionOptions),
-    SyncAgents(SyncAgentsOptions),
     Run(commands::run::RunOptions),
+    CheckDb(CheckDbOptions),
+    Upload(UploadOptions),
 }
-fn main() {
+
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
@@ -69,61 +60,20 @@ fn main() {
         Commands::Load(opts) => handle_load(opts),
         Commands::Unload(opts) => handle_unload(opts),
         Commands::Inspect(opts) => handle_inspect(opts),
-        Commands::Logs(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_logs(opts));
-        }
-        Commands::Agents(opts) => handle_agents(opts),
-        Commands::AgentLogs(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_agent_logs(opts));
-        }
-        Commands::InspectAgent(opts) => handle_inspect_agent(opts),
-        Commands::RestartAgent(opts) => handle_restart_agent(opts),
-        Commands::Live => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_live());
-        }
-        Commands::Daemon => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_daemon());
-        }
-        Commands::Monitor => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_monitor()).unwrap();
-        }
-        Commands::PingAll => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(ping_all::handle_ping_all());
-        }
-        Commands::WatchCpu(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_watch_cpu(opts)).unwrap();
-        }
-        Commands::Config(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_config(opts)).unwrap();
-        }
-        Commands::Alerts => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_alerts()).unwrap();
-        }
-        Commands::KillAgent(opts) => handle_kill_agent(opts).unwrap(),
-        Commands::UpdateAgent(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_update_agent(opts)).unwrap();
-        }
-        Commands::Version(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_version(opts)).unwrap();
-        }
-        Commands::SyncAgents(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(handle_sync_agents(opts)).unwrap();
-        }
-        Commands::Run(opts) => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(commands::run::handle_run(opts));
+        Commands::Logs(opts) => handle_logs(opts).await,
+        Commands::Daemon => handle_daemon().await,
+        Commands::Monitor => handle_monitor().await.unwrap(),
+        Commands::PingAll => ping_all::handle_ping_all().await,
+        Commands::WatchCpu(opts) => handle_watch_cpu(opts).await.unwrap(),
+        Commands::Config(opts) => handle_config(opts).await.unwrap(),
+        Commands::Alerts => handle_alerts().await.unwrap(),
+        Commands::Version(opts) => handle_version(opts).await.unwrap(),
+        Commands::Run(opts) => commands::run::handle_run(opts).await,
+        Commands::CheckDb(opts) => handle_check_db(opts).await.unwrap(),
+        Commands::Upload(opts) => {
+            if let Err(e) = handle_upload(opts).await {
+                eprintln!("Upload failed: {}", e);
+            }
         }
     }
 }

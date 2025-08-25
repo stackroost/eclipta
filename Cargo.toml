@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "eclipta-cli",
-    "eclipta-agents",
     "ebpf-demo/user"
 ]
 
