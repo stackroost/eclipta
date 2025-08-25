@@ -1,57 +1,36 @@
-use std::{fs, time::Duration};
+use std::time::Duration;
 use tokio::time::sleep;
-use serde::Deserialize;
-use chrono::Local;
 use clap::Args;
-
-#[derive(Deserialize)]
-struct AgentCpuLoad {
-    id: String,
-    cpu_load: Option<[f32; 3]>,
-    last_seen: String,
-}
+use sysinfo::{System, CpuRefreshKind, RefreshKind};
 
 #[derive(Args)]
 pub struct WatchCpuOptions {
-    #[arg(long)]
-    pub agent_id: Option<String>,
+    #[arg(long, default_value_t = 1)]
+    pub interval_secs: u64,
 }
 
 pub async fn handle_watch_cpu(opts: WatchCpuOptions) -> anyhow::Result<()> {
-    let agent_filter = opts.agent_id;
+    println!("Watching system CPU/memory (Ctrl+C to quit)...");
 
-    println!("Watching CPU load{} (Ctrl+C to quit)...",
-        agent_filter
-            .as_ref()
-            .map(|id| format!(" for agent '{}'", id))
-            .unwrap_or_default()
+    let mut sys = System::new_with_specifics(
+        RefreshKind::new().with_memory(sysinfo::MemoryRefreshKind::everything()).with_cpu(CpuRefreshKind::everything()),
     );
 
     loop {
-        let paths = fs::read_dir("/run/eclipta")?;
-        println!("\n{}", Local::now().format("%H:%M:%S"));
+        sys.refresh_memory();
+        sys.refresh_cpu();
 
-        for entry in paths.flatten() {
-            if let Ok(content) = fs::read_to_string(entry.path()) {
-                if let Ok(agent) = serde_json::from_str::<AgentCpuLoad>(&content) {
-                    if let Some(ref filter) = agent_filter {
-                        if agent.id != *filter {
-                            continue;
-                        }
-                    }
+        let total_mem = sys.total_memory();
+        let used_mem = sys.used_memory();
+        let global_cpu = sys.global_cpu_info().cpu_usage();
 
-                    if let Some(load) = agent.cpu_load {
-                        println!(
-                            "{} | CPU Load: {:.1} / {:.1} / {:.1} | Seen: {}",
-                            agent.id,
-                            load[0], load[1], load[2],
-                            agent.last_seen
-                        );
-                    }
-                }
-            }
-        }
+        println!(
+            "CPU: {:.1}% | Mem: {}/{} MiB",
+            global_cpu,
+            used_mem / 1024 / 1024,
+            total_mem / 1024 / 1024
+        );
 
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_secs(opts.interval_secs)).await;
     }
 }
