@@ -1,6 +1,13 @@
-
 use sqlx::{Pool, Postgres};
 
+#[derive(Debug)]
+pub struct Program {
+    pub id: i32,
+    pub title: String,
+    pub version: String,
+    pub status: String,
+    pub path: String,
+}
 
 pub async fn insert_program(
     pool: &Pool<Postgres>,
@@ -19,6 +26,37 @@ pub async fn insert_program(
     .bind(description)
     .bind(version)
     .bind(path)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn list_programs(pool: &Pool<Postgres>) -> Result<Vec<Program>, sqlx::Error> {
+    let rows = sqlx::query_as!(
+        Program,
+        r#"
+        SELECT 
+            id, 
+            title, 
+            version, 
+            status, 
+            path
+        FROM ebpf_programs
+        ORDER BY created_at DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn delete_program(pool: &Pool<Postgres>, program_id: i32) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM ebpf_programs WHERE id = $1",
+        program_id
+    )
     .execute(pool)
     .await?;
 

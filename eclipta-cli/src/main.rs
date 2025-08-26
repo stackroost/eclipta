@@ -2,29 +2,51 @@ mod commands;
 mod utils;
 mod db;
 
-use crate::commands::logs::LogOptions;
 use clap::{Parser, Subcommand};
-use commands::alerts::handle_alerts;
-use commands::check_db::{handle_check_db, CheckDbOptions};
-use commands::config::{handle_config, ConfigOptions};
-use commands::daemon::handle_daemon;
-use commands::inspect::{handle_inspect, InspectOptions};
-use commands::monitor::handle_monitor;
-use commands::ping_all;
-use commands::upload::{handle_upload, UploadOptions};
-use commands::version::{handle_version, VersionOptions};
-use commands::watch_cpu::{handle_watch_cpu, WatchCpuOptions};
-use commands::{
-    load::handle_load,
-    logs::handle_logs,
+
+// SYSTEM COMMANDS
+use crate::commands::system::{
+    logs::{handle_logs, LogOptions},
+    monitor::handle_monitor,
     status::run_status,
+    watch_cpu::{handle_watch_cpu, WatchCpuOptions},
+};
+
+// EBPf PROGRAM COMMANDS
+use crate::commands::ebpf::{
+    inspect::{handle_inspect, InspectOptions},
+    load::handle_load,
     unload::{handle_unload, UnloadOptions},
+    upload::{handle_upload, UploadOptions},
+    list::handle_list,
+    remove::{handle_remove, RemoveOptions},
+};
+
+// NETWORK COMMANDS
+use crate::commands::network::{
+    alerts::handle_alerts,
+    ping_all::handle_ping_all,
+};
+
+// CONFIG COMMANDS
+use crate::commands::config::{
+    config::{handle_config, ConfigOptions},
+    daemon::handle_daemon,
+};
+
+// STORE / DB COMMANDS
+use crate::commands::store::check_db::{handle_check_db, CheckDbOptions};
+
+// OTHER GLOBAL COMMANDS
+use crate::commands::{
+    run::{handle_run, RunOptions},
+    version::{handle_version, VersionOptions},
     welcome::run_welcome,
 };
 
 #[derive(Parser)]
 #[command(name = "eclipta")]
-#[command(about = "eclipta CLI - self-hosted observability platform")]
+#[command(about = "Eclipta CLI - self-hosted observability platform")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -34,7 +56,7 @@ struct Cli {
 enum Commands {
     Welcome,
     Status,
-    Load(commands::load::LoadOptions),
+    Load(commands::ebpf::load::LoadOptions),
     Logs(LogOptions),
     Unload(UnloadOptions),
     Inspect(InspectOptions),
@@ -45,16 +67,24 @@ enum Commands {
     Config(ConfigOptions),
     Alerts,
     Version(VersionOptions),
-    Run(commands::run::RunOptions),
+    Run(RunOptions),
     CheckDb(CheckDbOptions),
     Upload(UploadOptions),
+    List,
+    Remove(RemoveOptions), 
 }
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+    if let Err(e) = handle_command(cli.command).await {
+        eprintln!("[ERROR] {}", e);
+        std::process::exit(1);
+    }
+}
 
-    match cli.command {
+async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>> {
+    match cmd {
         Commands::Welcome => run_welcome(),
         Commands::Status => run_status(),
         Commands::Load(opts) => handle_load(opts),
@@ -62,18 +92,31 @@ async fn main() {
         Commands::Inspect(opts) => handle_inspect(opts),
         Commands::Logs(opts) => handle_logs(opts).await,
         Commands::Daemon => handle_daemon().await,
-        Commands::Monitor => handle_monitor().await.unwrap(),
-        Commands::PingAll => ping_all::handle_ping_all().await,
-        Commands::WatchCpu(opts) => handle_watch_cpu(opts).await.unwrap(),
-        Commands::Config(opts) => handle_config(opts).await.unwrap(),
-        Commands::Alerts => handle_alerts().await.unwrap(),
-        Commands::Version(opts) => handle_version(opts).await.unwrap(),
-        Commands::Run(opts) => commands::run::handle_run(opts).await,
-        Commands::CheckDb(opts) => handle_check_db(opts).await.unwrap(),
+        Commands::Monitor => handle_monitor().await?,
+        Commands::PingAll => handle_ping_all().await,
+        Commands::WatchCpu(opts) => handle_watch_cpu(opts).await?,
+        Commands::Config(opts) => handle_config(opts).await?,
+        Commands::Alerts => handle_alerts().await?,
+        Commands::Version(opts) => handle_version(opts).await?,
+        Commands::Run(opts) => handle_run(opts).await,
+        Commands::CheckDb(opts) => handle_check_db(opts).await?,
         Commands::Upload(opts) => {
             if let Err(e) = handle_upload(opts).await {
-                eprintln!("Upload failed: {}", e);
+                eprintln!("[UPLOAD ERROR] {}", e);
             }
         }
+        Commands::List => {
+            if let Err(e) = handle_list().await {
+                eprintln!("[LIST ERROR] {}", e);
+            }
+        }
+        Commands::Remove(opts) => {
+    if let Err(e) = handle_remove(opts).await {
+        eprintln!("[REMOVE ERROR] {}", e);
     }
+}
+
+    }
+
+    Ok(())
 }

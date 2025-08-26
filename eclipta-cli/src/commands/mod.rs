@@ -1,16 +1,9 @@
-pub mod welcome;
-pub mod status;
-pub mod load;
-pub mod logs;
-pub mod unload;
-pub mod inspect;
-pub mod daemon;
-pub mod monitor;
-pub mod ping_all;
-pub mod watch_cpu;
+pub mod system;
+pub mod ebpf;
+pub mod network;
 pub mod config;
-pub mod alerts;
-pub mod version;
+
 pub mod run;
-pub mod check_db;
-pub mod upload;
+pub mod version;
+pub mod welcome;
+pub mod store;

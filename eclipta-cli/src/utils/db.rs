@@ -27,7 +27,8 @@ async fn run_migrations(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             version TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'deactive',
             path TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT unique_title_version UNIQUE (title, version)
         )
         "#
     )

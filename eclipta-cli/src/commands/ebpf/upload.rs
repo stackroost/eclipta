@@ -80,17 +80,27 @@ pub async fn handle_upload(opts: UploadOptions) -> Result<(), Box<dyn std::error
     };
 
     match insert_program(
-        &pool,
-        &opts.title,
-        &opts.description,
-        &opts.version,
-        &dest_path.to_string_lossy(),
-    )
-    .await
-    {
-        Ok(_) => success("Upload complete! Metadata stored in database."),
-        Err(e) => error(&format!("Database insert failed: {}", e)),
+    &pool,
+    &opts.title,
+    &opts.description,
+    &opts.version,
+    &dest_path.to_string_lossy(),
+).await {
+    Ok(_) => success("Upload complete! Metadata stored in database."),
+    Err(sqlx::Error::Database(db_err)) => {
+        if db_err.constraint() == Some("unique_title_version") {
+            error("A program with this title and version already exists.");
+            return Ok(()); // or Err if you want non-zero exit
+        } else {
+            error(&format!("Database insert failed: {}", db_err));
+            return Ok(());
+        }
     }
+    Err(e) => {
+        error(&format!("Database insert failed: {}", e));
+        return Ok(());
+    }
+}
 
     Ok(())
 }
