@@ -2,4 +2,4 @@
 target-dir = "target"
 
 [target.bpfel-unknown-none]
-linker = "bpf-linker" 
+linker = "bpf-linker"
