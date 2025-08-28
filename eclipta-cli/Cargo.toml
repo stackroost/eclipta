@@ -13,7 +13,7 @@ console = "0.15"
 nix = { version = "0.30", features = ["user", "signal", "process", "resource"] }
 anyhow = "1"
 log = "0.4"
-tokio = { version = "1.38", features = ["rt-multi-thread", "time", "signal", "fs", "io-util", "macros" ] }
+tokio = { version = "1.38", features = ["rt-multi-thread", "time", "signal", "fs", "io-util", "macros" , "process"] }
 byteorder = "1"
 bytes = "1.10.1"
 serde_json = "1.0"
@@ -31,3 +31,4 @@ dotenvy = "0.15"
 uuid = { version = "1.8", features = ["v4"] }
 colored = "2.1"
 prettytable = "0.10.0"
+object = "0.32"

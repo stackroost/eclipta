@@ -26,12 +26,12 @@ pub fn default_bin_object() -> PathBuf {
     cwd.join("bin").join("ebpf.so")
 }
 
-pub fn default_pin_prefix() -> PathBuf {
-    if let Ok(p) = env::var("ECLIPTA_PIN_PATH") {
-        return PathBuf::from(p);
-    }
-    PathBuf::from("/sys/fs/bpf/eclipta")
-}
+// pub fn default_pin_prefix() -> PathBuf {
+//     if let Ok(p) = env::var("ECLIPTA_PIN_PATH") {
+//         return PathBuf::from(p);
+//     }
+//     PathBuf::from("/sys/fs/bpf/eclipta")
+// }
 
 pub fn default_state_path() -> PathBuf {
     if let Ok(p) = env::var("ECLIPTA_STATE") { return PathBuf::from(p); }
