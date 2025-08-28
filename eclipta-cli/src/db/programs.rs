@@ -62,3 +62,53 @@ pub async fn delete_program(pool: &Pool<Postgres>, program_id: i32) -> Result<()
 
     Ok(())
 }
+
+pub async fn get_program_by_id(
+    pool: &Pool<Postgres>,
+    program_id: i32,
+) -> Result<Option<Program>, sqlx::Error> {
+    let row = sqlx::query_as!(
+        Program,
+        r#"
+        SELECT 
+            id, 
+            title, 
+            version, 
+            status, 
+            path
+        FROM ebpf_programs
+        WHERE id = $1
+        "#,
+        program_id
+    )
+    .fetch_optional(pool)  
+    .await?;
+
+    Ok(row)
+}
+
+pub async fn get_program_by_title(
+    pool: &Pool<Postgres>,
+    title: &str,
+) -> Result<Vec<Program>, sqlx::Error> {
+    let rows = sqlx::query_as!(
+        Program,
+        r#"
+        SELECT 
+            id, 
+            title, 
+            version, 
+            status, 
+            path
+        FROM ebpf_programs
+        WHERE title = $1
+        ORDER BY created_at DESC
+        "#,
+        title
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+

@@ -2,6 +2,7 @@ mod commands;
 mod utils;
 mod db;
 
+
 use clap::{Parser, Subcommand};
 
 // SYSTEM COMMANDS
@@ -87,7 +88,7 @@ async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>>
     match cmd {
         Commands::Welcome => run_welcome(),
         Commands::Status => run_status(),
-        Commands::Load(opts) => handle_load(opts),
+        Commands::Load(opts) => handle_load(opts).await,
         Commands::Unload(opts) => handle_unload(opts),
         Commands::Inspect(opts) => handle_inspect(opts),
         Commands::Logs(opts) => handle_logs(opts).await,
