@@ -41,6 +41,7 @@ pub const TRACEPOINT_NET_SECTION: &str = "tracepoint/net";
 pub const KPROBE_NET_SECTION: &str = "kprobe/net";
 pub const UPROBE_NET_SECTION: &str = "uprobe/net";
 pub const LSM_NET_SECTION: &str = "lsm/net";
+pub const TRACEPOINT_SECTION: &str = "tracepoint";
 
 #[derive(Debug)]
 pub struct ProgramRequirements {
@@ -138,45 +139,47 @@ pub fn validate_ebpf_file(path: &PathBuf) -> Result<ProgramRequirements> {
     let mut program_type = String::new();
 
     for section in obj.sections() {
+        println!("Section: {}", section.name().unwrap());
         if let Ok(name) = section.name() {
-            match name {
-                XDP_SECTION | XDP_DROP_SECTION => { 
-                    found_sections.insert("XDP".to_string());
-                    requires_interface = true;
-                    program_type = "XDP".to_string();
+            if name.starts_with("tracepoint/") {
+                found_sections.insert("Tracepoint".to_string());
+                program_type = "Tracepoint".to_string();
+            } else {
+                match name {
+                    XDP_SECTION | XDP_DROP_SECTION => { 
+                        found_sections.insert("XDP".to_string());
+                        requires_interface = true;
+                        program_type = "XDP".to_string();
+                    }
+                    TC_INGRESS_SECTION => { 
+                        found_sections.insert("TC Ingress".to_string());
+                        requires_interface = true;
+                        program_type = "TC".to_string();
+                    }
+                    TC_EGRESS_SECTION => { 
+                        found_sections.insert("TC Egress".to_string());
+                        requires_interface = true;
+                        program_type = "TC".to_string();
+                    }
+                    SOCKET_FILTER_SECTION => { 
+                        found_sections.insert("Socket Filter".to_string());
+                        requires_socket_fd = true;
+                        program_type = "SocketFilter".to_string();
+                    }
+                    KPROBE_NET_SECTION => { 
+                        found_sections.insert("Kprobe".to_string());
+                        program_type = "Kprobe".to_string();
+                    }
+                    UPROBE_NET_SECTION => { 
+                        found_sections.insert("Uprobe".to_string());
+                        program_type = "Uprobe".to_string();
+                    }
+                    LSM_NET_SECTION => { 
+                        found_sections.insert("LSM".to_string());
+                        program_type = "LSM".to_string();
+                    }
+                    _ => {}
                 }
-                TC_INGRESS_SECTION => { 
-                    found_sections.insert("TC Ingress".to_string());
-                    requires_interface = true;
-                    program_type = "TC".to_string();
-                }
-                TC_EGRESS_SECTION => { 
-                    found_sections.insert("TC Egress".to_string());
-                    requires_interface = true;
-                    program_type = "TC".to_string();
-                }
-                SOCKET_FILTER_SECTION => { 
-                    found_sections.insert("Socket Filter".to_string());
-                    requires_socket_fd = true;
-                    program_type = "SocketFilter".to_string();
-                }
-                TRACEPOINT_NET_SECTION => { 
-                    found_sections.insert("Tracepoint".to_string());
-                    program_type = "Tracepoint".to_string();
-                }
-                KPROBE_NET_SECTION => { 
-                    found_sections.insert("Kprobe".to_string());
-                    program_type = "Kprobe".to_string();
-                }
-                UPROBE_NET_SECTION => { 
-                    found_sections.insert("Uprobe".to_string());
-                    program_type = "Uprobe".to_string();
-                }
-                LSM_NET_SECTION => { 
-                    found_sections.insert("LSM".to_string());
-                    program_type = "LSM".to_string();
-                }
-                _ => {}
             }
         }
     }
