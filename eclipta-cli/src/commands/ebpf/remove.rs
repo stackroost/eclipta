@@ -1,7 +1,8 @@
-use crate::utils::db::init_db;
+use crate::utils::db::ensure_db_ready;
 use crate::db::programs::delete_program;
 use std::fs;
 use clap::Parser;
+use sqlx::Row;
 
 #[derive(Parser)]
 pub struct RemoveOptions {
@@ -9,20 +10,44 @@ pub struct RemoveOptions {
 }
 
 pub async fn handle_remove(opts: RemoveOptions) -> Result<(), Box<dyn std::error::Error>> {
-    let pool = init_db().await?;
-    let program = sqlx::query!(
+    // connect to DB
+    let pool = match ensure_db_ready().await {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("❌ Failed to connect to database: {e}");
+            return Ok(()); // return gracefully instead of crashing
+        }
+    };
+
+    // fetch program info (runtime query to avoid compile-time DB checks)
+    let program_row = match sqlx::query(
         "SELECT path, title FROM ebpf_programs WHERE id = $1",
-        opts.id
     )
+    .bind(opts.id)
     .fetch_one(&pool)
-    .await?;
-    if fs::remove_file(&program.path).is_ok() {
-        println!("[OK] Deleted file: {}", &program.path);
-    } else {
-        println!("[WARN] File not found or cannot delete: {}", &program.path);
+    .await
+    {
+        Ok(row) => row,
+        Err(e) => {
+            eprintln!("❌ Could not find program with ID {}: {e}", opts.id);
+            return Ok(());
+        }
+    };
+
+    // try removing file
+    let path: String = program_row.get("path");
+    let title: String = program_row.get("title");
+
+    match fs::remove_file(&path) {
+        Ok(_) => println!("✅ Deleted file: {}", &path),
+        Err(_) => println!("⚠️ File not found or cannot delete: {}", &path),
     }
-    delete_program(&pool, opts.id).await?;
-    println!("[OK] Removed program '{}' (ID: {}) from database.", program.title, opts.id);
+
+    // delete from database
+    match delete_program(&pool, opts.id).await {
+        Ok(_) => println!("✅ Removed program '{}' (ID: {}) from database.", title, opts.id),
+        Err(e) => eprintln!("❌ Failed to remove program from database: {e}"),
+    }
 
     Ok(())
 }
