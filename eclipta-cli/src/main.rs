@@ -37,6 +37,7 @@ use crate::commands::config::{
 
 // STORE / DB COMMANDS
 use crate::commands::store::check_db::{handle_check_db, CheckDbOptions};
+use crate::commands::store::migrate::{handle_migrate, MigrateOptions};
 
 // OTHER GLOBAL COMMANDS
 use crate::commands::{
@@ -70,6 +71,7 @@ enum Commands {
     Version(VersionOptions),
     Run(RunOptions),
     CheckDb(CheckDbOptions),
+    Migrate(MigrateOptions),
     Upload(UploadOptions),
     List,
     Remove(RemoveOptions), 
@@ -88,7 +90,7 @@ async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>>
     match cmd {
         Commands::Welcome => run_welcome(),
         Commands::Status => run_status(),
-        Commands::Load(opts) => handle_load(opts).await,
+        Commands::Load(opts) => handle_load(opts).await?,
         Commands::Unload(opts) => handle_unload(opts),
         Commands::Inspect(opts) => handle_inspect(opts),
         Commands::Logs(opts) => handle_logs(opts).await,
@@ -101,6 +103,7 @@ async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>>
         Commands::Version(opts) => handle_version(opts).await?,
         Commands::Run(opts) => handle_run(opts).await,
         Commands::CheckDb(opts) => handle_check_db(opts).await?,
+        Commands::Migrate(opts) => handle_migrate(opts).await?,
         Commands::Upload(opts) => {
             if let Err(e) = handle_upload(opts).await {
                 eprintln!("[UPLOAD ERROR] {}", e);
@@ -112,11 +115,10 @@ async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>>
             }
         }
         Commands::Remove(opts) => {
-    if let Err(e) = handle_remove(opts).await {
-        eprintln!("[REMOVE ERROR] {}", e);
-    }
-}
-
+            if let Err(e) = handle_remove(opts).await {
+                eprintln!("[REMOVE ERROR] {}", e);
+            }
+        }
     }
 
     Ok(())

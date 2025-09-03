@@ -1,4 +1,4 @@
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, Row};
 
 #[derive(Debug)]
 pub struct Program {
@@ -33,8 +33,7 @@ pub async fn insert_program(
 }
 
 pub async fn list_programs(pool: &Pool<Postgres>) -> Result<Vec<Program>, sqlx::Error> {
-    let rows = sqlx::query_as!(
-        Program,
+    let rows = sqlx::query(
         r#"
         SELECT 
             id, 
@@ -49,14 +48,25 @@ pub async fn list_programs(pool: &Pool<Postgres>) -> Result<Vec<Program>, sqlx::
     .fetch_all(pool)
     .await?;
 
-    Ok(rows)
+    let programs = rows
+        .iter()
+        .map(|row| Program {
+            id: row.get("id"),
+            title: row.get("title"),
+            version: row.get("version"),
+            status: row.get("status"),
+            path: row.get("path"),
+        })
+        .collect();
+
+    Ok(programs)
 }
 
 pub async fn delete_program(pool: &Pool<Postgres>, program_id: i32) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        "DELETE FROM ebpf_programs WHERE id = $1",
-        program_id
+    sqlx::query(
+        "DELETE FROM ebpf_programs WHERE id = $1"
     )
+    .bind(program_id)
     .execute(pool)
     .await?;
 
@@ -67,8 +77,7 @@ pub async fn get_program_by_id(
     pool: &Pool<Postgres>,
     program_id: i32,
 ) -> Result<Option<Program>, sqlx::Error> {
-    let row = sqlx::query_as!(
-        Program,
+    let row = sqlx::query(
         r#"
         SELECT 
             id, 
@@ -78,21 +87,28 @@ pub async fn get_program_by_id(
             path
         FROM ebpf_programs
         WHERE id = $1
-        "#,
-        program_id
+        "#
     )
-    .fetch_optional(pool)  
+    .bind(program_id)
+    .fetch_optional(pool)
     .await?;
 
-    Ok(row)
+    let program = row.map(|row| Program {
+        id: row.get("id"),
+        title: row.get("title"),
+        version: row.get("version"),
+        status: row.get("status"),
+        path: row.get("path"),
+    });
+
+    Ok(program)
 }
 
 pub async fn get_program_by_title(
     pool: &Pool<Postgres>,
     title: &str,
 ) -> Result<Vec<Program>, sqlx::Error> {
-    let rows = sqlx::query_as!(
-        Program,
+    let rows = sqlx::query(
         r#"
         SELECT 
             id, 
@@ -103,12 +119,23 @@ pub async fn get_program_by_title(
         FROM ebpf_programs
         WHERE title = $1
         ORDER BY created_at DESC
-        "#,
-        title
+        "#
     )
+    .bind(title)
     .fetch_all(pool)
     .await?;
 
-    Ok(rows)
+    let programs = rows
+        .iter()
+        .map(|row| Program {
+            id: row.get("id"),
+            title: row.get("title"),
+            version: row.get("version"),
+            status: row.get("status"),
+            path: row.get("path"),
+        })
+        .collect();
+
+    Ok(programs)
 }
 

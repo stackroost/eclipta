@@ -38,3 +38,6 @@ coverage/
 *.profraw
 *.profdata
 flamegraph.svg
+
+/tests/*
+/bin/*

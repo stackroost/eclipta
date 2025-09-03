@@ -1,12 +1,12 @@
 use prettytable::{Table, Row, Cell, format};
-use crate::utils::db::init_db;
+use crate::utils::db::ensure_db_ready;
 use crate::utils::logger::info;
 use crate::db::programs::list_programs;
 use prettytable::row;
 
 
 pub async fn handle_list() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = init_db().await?;
+    let pool = ensure_db_ready().await?;
     let programs = list_programs(&pool).await?;
 
     if programs.is_empty() {

@@ -1,18 +1,22 @@
-use crate::utils::db::init_db;
+use clap::Args;
+use crate::utils::db::ensure_db_ready;
 use crate::utils::logger::{success, error};
 
-#[derive(clap::Args)]
-pub struct CheckDbOptions {}
+#[derive(Args, Debug)]
+pub struct CheckDbOptions {
+    #[arg(long, default_value = "false")]
+    pub verbose: bool,
+}
 
 pub async fn handle_check_db(_opts: CheckDbOptions) -> Result<(), Box<dyn std::error::Error>> {
-    match init_db().await {
+    match ensure_db_ready().await {
         Ok(_) => {
             success("Database connection successful & migrations applied!");
             Ok(())
         }
         Err(e) => {
-            error(&format!("Database connection failed: {}", e));
-            Err(Box::new(e))
+            error(&format!("Database check failed: {}", e));
+            Err(e)
         }
     }
 }
