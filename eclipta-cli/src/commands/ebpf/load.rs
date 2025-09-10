@@ -97,15 +97,14 @@ pub async fn handle_load(opts: LoadOptions) -> Result<()> {
     let should_skip_verifier = requirements.sections.iter()
         .all(|s| s.contains("TC"));
     
-    if should_skip_verifier {
+    // Load and attach the program, keeping the Ebpf object alive
+    let attach_result = if should_skip_verifier {
         println!("Skipping Aya verifier for TC-only programs");
+        attach_program_to_kernel(&program_path, &requirements, &opts).await?
     } else {
-        println!("Loading eBPF program using Aya...");
-        load_ebpf_with_aya(&program_path)?;
-    }
-
-    println!("Attaching program to kernel...");
-    let attach_result = attach_program_to_kernel(&program_path, &requirements, &opts).await?;
+        println!("Loading and attaching eBPF program using Aya...");
+        load_and_attach_ebpf(&program_path, &requirements, &opts).await?
+    };
 
     println!("Verifying kernel program attachment...");
     verify_kernel_attachment(&requirements, &opts).await?;
@@ -256,6 +255,81 @@ fn load_ebpf_with_aya(path: &PathBuf) -> Result<()> {
 
     println!("Aya eBPF loading completed successfully");
     Ok(())
+}
+
+async fn load_and_attach_ebpf(
+    path: &PathBuf, 
+    requirements: &ProgramRequirements, 
+    opts: &LoadOptions
+) -> Result<String> {
+    let mut ebpf = Ebpf::load_file(path)
+        .context("Failed to load eBPF object with Aya")?;
+
+    let map_count = ebpf.maps().count();
+    if map_count == 0 {
+        println!("No maps found in eBPF object");
+    } else {
+        println!("Found {} maps in eBPF object", map_count);
+    }
+
+    // Load all programs first
+    for (name, program) in ebpf.programs_mut() {
+        match load_program_by_type(program) {
+            Ok(()) => println!("Program '{}' loaded successfully", name),
+            Err(e) => {
+                let error_msg = e.to_string();
+                if error_msg.contains("busy") || error_msg.contains("already") {
+                    println!("Program '{}' already loaded (EBUSY)", name);
+                    continue;
+                }
+                return Err(anyhow!("Failed to load program '{}': {}", name, e));
+            }
+        }
+    }
+
+    println!("Aya eBPF loading completed successfully");
+
+    // Now attach the programs based on type
+    match requirements.program_type.as_str() {
+        "XDP" => {
+            let iface = opts.iface.as_ref()
+                .ok_or_else(|| anyhow!("Interface required for XDP programs"))?;
+            
+            for (name, program) in ebpf.programs_mut() {
+                if let Program::Xdp(xdp_prog) = program {
+                    xdp_prog.attach(iface, aya::programs::XdpFlags::default())
+                        .context("Failed to attach XDP program to interface")?;
+                    
+                    println!("XDP program '{}' attached to interface '{}'", name, iface);
+                    return Ok(format!("XDP program attached to {}", iface));
+                }
+            }
+            Err(anyhow!("No XDP program found in eBPF object"))
+        }
+        
+        "Tracepoint" => {
+            let category = requirements.tracepoint_category.as_ref()
+                .ok_or_else(|| anyhow!("Tracepoint category not found in ELF sections"))?;
+            let name = requirements.tracepoint_name.as_ref()
+                .ok_or_else(|| anyhow!("Tracepoint name not found in ELF sections"))?;
+            
+            for (prog_name, program) in ebpf.programs_mut() {
+                if let Program::TracePoint(tp_prog) = program {
+                    tp_prog.attach(category, name)
+                        .context(format!("Failed to attach Tracepoint program to '{}:{}'", category, name))?;
+                    
+                    println!("Tracepoint program '{}' attached to '{}:{}'", prog_name, category, name);
+                    return Ok(format!("Tracepoint program attached to {}:{}", category, name));
+                }
+            }
+            Err(anyhow!("No Tracepoint program found in eBPF object"))
+        }
+        
+        _ => {
+            // For other program types, just return success since they were loaded
+            Ok(format!("Program type {} loaded successfully", requirements.program_type))
+        }
+    }
 }
 
 async fn attach_program_to_kernel(
@@ -453,6 +527,7 @@ async fn verify_kernel_attachment(requirements: &ProgramRequirements, opts: &Loa
                         println!("  {}", line.trim());
                     }
                 }
+                return Err(anyhow!("Failed to verify tracepoint attachment to '{}:{}'", category, name));
             }
         }
         
