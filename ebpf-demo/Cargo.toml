@@ -1,5 +1,0 @@
-[workspace]
-members = ["user",
-  "xdp_drop"
-]
-resolver = "2"

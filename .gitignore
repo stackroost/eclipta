@@ -1,43 +1,96 @@
-# === Rust build & cargo files ===
+# Rust build artifacts
 /target/
-**/target/
+**/*.rs.bk
+Cargo.lock
 
-# === IDE/editor folders ===
-.idea/
+# IDE and editor files
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
 
-# === OS generated files ===
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# === Logs, temp, runtime ===
+# Logs
 *.log
-/run/eclipta/
-*.json
+logs/
+/var/log/eclipta/
 
-# === Byproducts ===
+# Runtime data
+/run/eclipta/
+/var/lib/eclipta/
+/tmp/eclipta/
+
+# Configuration files with sensitive data
+config.yaml
+*.key
+*.pem
+*.crt
+*.p12
+
+# eBPF compiled objects (keep source, ignore compiled)
+*.o
+*.so
+*.skel.h
+
+# Keep sample eBPF objects for testing
+!bin/simple_trace.o
+!bin/simple_xdp.o
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
 *.bak
+*.backup
 *.old
 
-# === Environment files ===
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage reports
+tarpaulin-report.html
+lcov.info
+
+# Profiling data
+*.prof
+perf.data*
+
+# Documentation build
+/book/
+/docs/_build/
+
+# Package files
+*.tar.gz
+*.zip
+*.deb
+*.rpm
+
+# Local development
 .env
-.env.*
+.env.local
+.env.*.local
 
-# === Rust/Cargo specific ===
-Cargo.lock # optional: keep it if you're building a binary (e.g., CLI), not a library
-/.cargo/
-
-# === Coverage/test tools ===
-htmlcov/
+# Test artifacts
+test-results/
 coverage/
-*.lcov
 
-# === Debug/profiler ===
-*.profraw
-*.profdata
-flamegraph.svg
+# eBPF development
+vmlinux.h
+*.ll
+*.bc
 
-/tests/*
-/bin/*
+# System files
+/var/cache/eclipta/
+/var/run/eclipta.pid

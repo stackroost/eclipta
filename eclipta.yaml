@@ -1,0 +1,353 @@
+# Eclipta CLI - Self-Hosted Observability Platform
+# Comprehensive project documentation and configuration
+
+project:
+  name: "eclipta"
+  version: "0.1.0"
+  description: "Lightweight, modular CLI tool for managing, monitoring, and observing Linux agents"
+  author: "Mahesh Bhatiya"
+  license: "MIT"
+  repository: "https://github.com/stackroost/eclipta"
+  homepage: "https://github.com/stackroost/eclipta"
+
+# Build and Development Configuration
+build:
+  rust_version: "1.70+"
+  target: "x86_64-unknown-linux-gnu"
+  features:
+    - "default"
+    - "release"
+  profile:
+    release:
+      strip: true
+      opt-level: "z"
+      lto: true
+      codegen-units: 1
+
+# Dependencies
+dependencies:
+  runtime:
+    - "libbpf"
+    - "clang"
+    - "llvm"
+  development:
+    - "cargo"
+    - "rustc"
+    - "clippy"
+    - "rustfmt"
+
+# CLI Commands Documentation
+commands:
+  system:
+    welcome:
+      description: "Show welcome message and setup hint"
+      usage: "eclipta welcome"
+      examples:
+        - "eclipta welcome"
+    
+    status:
+      description: "Show CLI runtime status"
+      usage: "eclipta status [options]"
+      options:
+        - "--verbose, -v: Show detailed status information"
+        - "--json: Output in JSON format"
+      examples:
+        - "eclipta status"
+        - "eclipta status --verbose"
+        - "eclipta status --json"
+    
+    monitor:
+      description: "Interactive terminal UI of all agents"
+      usage: "eclipta monitor"
+      examples:
+        - "eclipta monitor"
+    
+    logs:
+      description: "View system or agent logs"
+      usage: "eclipta logs [options]"
+      options:
+        - "--agent, -a: Show logs for specific agent"
+        - "--follow, -f: Follow log output"
+        - "--lines, -n: Number of lines to show"
+      examples:
+        - "eclipta logs"
+        - "eclipta logs --agent my-agent"
+        - "eclipta logs --follow --lines 100"
+    
+    watch_cpu:
+      description: "Monitor CPU usage of an agent"
+      usage: "eclipta watch-cpu [options]"
+      options:
+        - "--agent, -a: Agent to monitor (required)"
+        - "--interval, -i: Update interval in seconds"
+      examples:
+        - "eclipta watch-cpu --agent my-agent"
+        - "eclipta watch-cpu --agent my-agent --interval 2"
+
+  ebpf:
+    load:
+      description: "Load/start an eBPF program"
+      usage: "eclipta load [options]"
+      options:
+        - "--program, -p: Path to eBPF program file (required)"
+        - "--name, -n: Name for the loaded program"
+        - "--interface, -i: Network interface (for XDP programs)"
+      examples:
+        - "eclipta load --program bin/simple_trace.o"
+        - "eclipta load --program bin/simple_xdp.o --interface eth0"
+        - "eclipta load --program bin/simple_trace.o --name my-tracer"
+    
+    unload:
+      description: "Gracefully unload eBPF program"
+      usage: "eclipta unload [options]"
+      options:
+        - "--program, -p: Program name or ID to unload (required)"
+        - "--force, -f: Force unload without graceful shutdown"
+      examples:
+        - "eclipta unload --program my-tracer"
+        - "eclipta unload --program 12345 --force"
+    
+    list:
+      description: "List all loaded eBPF programs"
+      usage: "eclipta list"
+      examples:
+        - "eclipta list"
+    
+    inspect:
+      description: "Inspect eBPF program details"
+      usage: "eclipta inspect [options]"
+      options:
+        - "--program, -p: Program name or ID to inspect (required)"
+        - "--maps: Show program maps"
+        - "--functions: Show program functions"
+      examples:
+        - "eclipta inspect --program my-tracer"
+        - "eclipta inspect --program my-tracer --maps"
+    
+    upload:
+      description: "Upload eBPF program to remote storage"
+      usage: "eclipta upload [options]"
+      options:
+        - "--program, -p: Path to eBPF program file (required)"
+        - "--name, -n: Name for the uploaded program"
+        - "--description, -d: Description of the program"
+      examples:
+        - "eclipta upload --program bin/simple_trace.o --name trace-open"
+    
+    remove:
+      description: "Remove eBPF program from storage"
+      usage: "eclipta remove [options]"
+      options:
+        - "--program, -p: Program name or ID to remove (required)"
+        - "--force, -f: Force removal without confirmation"
+      examples:
+        - "eclipta remove --program trace-open"
+        - "eclipta remove --program 12345 --force"
+
+  network:
+    ping_all:
+      description: "Check if all agents are alive/responding"
+      usage: "eclipta ping-all"
+      examples:
+        - "eclipta ping-all"
+    
+    alerts:
+      description: "List all agents currently in alert state"
+      usage: "eclipta alerts"
+      examples:
+        - "eclipta alerts"
+
+  config:
+    config:
+      description: "Get/set/list CLI configuration options"
+      usage: "eclipta config [options]"
+      options:
+        - "--get, -g: Get configuration value"
+        - "--set, -s: Set configuration value"
+        - "--list, -l: List all configuration options"
+        - "--key, -k: Configuration key"
+        - "--value, -v: Configuration value"
+      examples:
+        - "eclipta config --list"
+        - "eclipta config --get --key log_level"
+        - "eclipta config --set --key log_level --value debug"
+    
+    daemon:
+      description: "Start eclipta daemon process"
+      usage: "eclipta daemon"
+      examples:
+        - "eclipta daemon"
+
+  store:
+    check_db:
+      description: "Check database connectivity and status"
+      usage: "eclipta check-db [options]"
+      options:
+        - "--verbose, -v: Show detailed database information"
+      examples:
+        - "eclipta check-db"
+        - "eclipta check-db --verbose"
+    
+    migrate:
+      description: "Run database migrations"
+      usage: "eclipta migrate [options]"
+      options:
+        - "--up: Run pending migrations"
+        - "--down: Rollback last migration"
+        - "--status: Show migration status"
+      examples:
+        - "eclipta migrate --up"
+        - "eclipta migrate --status"
+
+  other:
+    version:
+      description: "Show current CLI version"
+      usage: "eclipta version [options]"
+      options:
+        - "--verbose, -v: Show detailed version information"
+      examples:
+        - "eclipta version"
+        - "eclipta version --verbose"
+    
+    run:
+      description: "Run a command or script"
+      usage: "eclipta run [options]"
+      options:
+        - "--command, -c: Command to run (required)"
+        - "--timeout, -t: Command timeout in seconds"
+      examples:
+        - "eclipta run --command 'ls -la'"
+        - "eclipta run --command 'ping google.com' --timeout 10"
+
+# File Structure
+file_structure:
+  root:
+    - "Cargo.toml: Workspace configuration"
+    - "README.md: Project documentation"
+    - "eclipta.yaml: This configuration file"
+    - "install.sh: Installation script"
+  
+  eclipta_cli:
+    - "src/main.rs: CLI entry point and command dispatch"
+    - "src/commands/: Command implementations"
+      - "system/: System monitoring commands"
+      - "ebpf/: eBPF program management commands"
+      - "network/: Network-related commands"
+      - "config/: Configuration management commands"
+      - "store/: Database and storage commands"
+    - "src/utils/: Utility functions"
+    - "src/db/: Database management"
+  
+  examples:
+    - "ebpf/: Sample eBPF programs"
+      - "simple_trace.c: Basic tracepoint program"
+      - "simple_xdp.c: Basic XDP program"
+      - "Makefile: Build configuration"
+  
+  bin:
+    - "simple_trace.o: Compiled tracepoint program"
+    - "simple_xdp.o: Compiled XDP program"
+
+# Installation Instructions
+installation:
+  prerequisites:
+    - "Rust 1.70 or later"
+    - "libbpf development libraries"
+    - "clang and llvm for eBPF compilation"
+    - "Linux kernel 4.18+ with eBPF support"
+  
+  build_from_source:
+    - "git clone https://github.com/stackroost/eclipta.git"
+    - "cd eclipta"
+    - "cargo build --release"
+    - "sudo cp target/release/eclipta /usr/local/bin/eclipta"
+  
+  install_dependencies:
+    ubuntu_debian:
+      - "sudo apt update"
+      - "sudo apt install libbpf-dev clang llvm"
+    arch_linux:
+      - "sudo pacman -S libbpf clang llvm"
+    fedora:
+      - "sudo dnf install libbpf-devel clang llvm"
+
+# Usage Examples
+usage_examples:
+  basic_monitoring:
+    - "eclipta welcome"
+    - "eclipta status"
+    - "eclipta monitor"
+  
+  ebpf_program_management:
+    - "eclipta load --program bin/simple_trace.o --name my-tracer"
+    - "eclipta list"
+    - "eclipta inspect --program my-tracer"
+    - "eclipta unload --program my-tracer"
+  
+  system_monitoring:
+    - "eclipta logs --follow"
+    - "eclipta watch-cpu --agent my-agent"
+    - "eclipta alerts"
+    - "eclipta ping-all"
+
+# Configuration
+configuration:
+  config_file: "/etc/eclipta/config.yaml"
+  data_directory: "/var/lib/eclipta"
+  log_directory: "/var/log/eclipta"
+  runtime_directory: "/run/eclipta"
+  
+  default_settings:
+    log_level: "info"
+    daemon_enabled: false
+    auto_start_programs: false
+    monitoring_interval: 5
+
+# Troubleshooting
+troubleshooting:
+  common_issues:
+    - "Permission denied: Run with sudo for eBPF operations"
+    - "eBPF program load failed: Check kernel version and eBPF support"
+    - "libbpf not found: Install libbpf development package"
+    - "Compilation errors: Ensure clang and llvm are installed"
+  
+  debugging:
+    - "Use --verbose flag for detailed output"
+    - "Check logs in /var/log/eclipta/"
+    - "Verify eBPF program with: eclipta inspect --program <name>"
+    - "Test with simple programs first"
+
+# Contributing
+contributing:
+  development_setup:
+    - "Fork the repository"
+    - "Clone your fork"
+    - "Create a feature branch"
+    - "Make your changes"
+    - "Add tests if applicable"
+    - "Submit a pull request"
+  
+  coding_standards:
+    - "Follow Rust formatting with rustfmt"
+    - "Run clippy for linting"
+    - "Add documentation for public APIs"
+    - "Write meaningful commit messages"
+  
+  testing:
+    - "Unit tests: cargo test"
+    - "Integration tests: cargo test --test integration"
+    - "eBPF programs: Test with sample programs in examples/"
+
+# License and Legal
+license:
+  type: "MIT"
+  year: "2025"
+  holder: "Mahesh Bhatiya"
+  text: "See LICENSE file for full license text"
+
+# Support and Community
+support:
+  issues: "https://github.com/stackroost/eclipta/issues"
+  discussions: "https://github.com/stackroost/eclipta/discussions"
+  documentation: "https://github.com/stackroost/eclipta/wiki"
+  email: "support@eclipta.dev"

@@ -1,7 +1,6 @@
 [workspace]
 members = [
-    "eclipta-cli",
-    "ebpf-demo/user"
+    "eclipta-cli"
 ]
 
 resolver = "2"

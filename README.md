@@ -1,110 +1,182 @@
-# eclipta CLI — Self-Hosted Observability Platform
+# Eclipta CLI
 
-**eclipta** is a lightweight, modular CLI tool for managing, monitoring, and observing Linux agents across your infrastructure. Built in Rust, eclipta enables DevOps, sysadmins, and SREs to inspect system health, manage agent lifecycles, and capture real-time performance metrics — entirely self-hosted.
+A lightweight, modular CLI tool for managing and monitoring eBPF programs on Linux systems. Built in Rust for performance and reliability.
 
 ## Features
 
-- Agent lifecycle control (`load`, `unload`, `restart`, `kill`, `update`)
-- Live system metrics (`cpu`, `memory`, `disk`, `network`, `processes`)
-- Dynamic agent discovery (`/run/eclipta/*.json`)
-- Snapshot syncing to `/etc/eclipta/agents/snapshot.json`
-- Configuration management with safe JSON storage
-- Realtime monitoring terminal UI (`monitor`, `live`)
-- Alert handling and health summaries
-- Zero external dependencies — Rust-native
+- **eBPF Program Management**: Load, unload, and monitor eBPF programs
+- **System Monitoring**: Real-time system metrics and process monitoring
+- **Interactive TUI**: Terminal-based user interface for monitoring
+- **Configuration Management**: Flexible configuration system
+- **Network Monitoring**: Network interface and traffic monitoring
+- **Database Integration**: SQLite-based data storage and management
 
-## Installation
+## Quick Start
 
-### Build from source:
+### Prerequisites
+
+- Rust 1.70+
+- Linux kernel 4.18+ with eBPF support
+- libbpf development libraries
+- clang and llvm for eBPF compilation
+
+### Installation
+
 ```bash
-git clone https://github.com/yourorg/eclipta.git
-cd eclipta/cli
+# Clone the repository
+git clone https://github.com/stackroost/eclipta.git
+cd eclipta
+
+# Build from source
 cargo build --release
+
+# Install (requires sudo for eBPF operations)
 sudo cp target/release/eclipta /usr/local/bin/eclipta
 ```
 
-## Usage
+### Basic Usage
 
 ```bash
-eclipta <command> [options]
+# Show welcome message and help
+eclipta welcome
+
+# Check system status
+eclipta status
+
+# Load a sample eBPF program
+eclipta load --program bin/simple_trace.o --name my-tracer
+
+# List loaded programs
+eclipta list
+
+# Start interactive monitoring
+eclipta monitor
+
+# Unload program
+eclipta unload --program my-tracer
 ```
 
-### Common Commands:
+## Sample eBPF Programs
 
-| Command           | Description                                  |
-|-------------------|----------------------------------------------|
-| `load`            | Load/start an agent binary                   |
-| `unload`          | Gracefully unload agent                      |
-| `restart-agent`   | Restart agent process                        |
-| `kill-agent`      | Forcefully kill agent                        |
-| `update-agent`    | Replace agent binary with updated version    |
-| `monitor`         | Interactive terminal UI of all agents       |
-| `live`            | Stream real-time agent logs + stats          |
-| `logs`            | View system or agent logs                    |
-| `agent-logs`      | Tail logs from a specific agent              |
-| `watch-cpu`       | Monitor CPU usage of an agent                |
-| `alerts`          | List all agents currently in alert state     |
-| `agents`          | Show all detected agents                     |
-| `inspect-agent`   | Print detailed stats of a specific agent     |
-| `inspect`         | Inspect eclipta CLI environment              |
-| `ping-all`        | Check if all agents are alive/responding     |
-| `sync-agents`     | Scan `/run/eclipta` and sync active agents   |
-| `config`          | Get/set/list CLI configuration options       |
-| `version`         | Show current CLI version                     |
-| `welcome`         | Show welcome message and setup hint          |
-| `status`          | Show CLI runtime status                      |
+The project includes sample eBPF programs for testing:
 
-## Agent Snapshot Format
+- `bin/simple_trace.o` - Basic tracepoint program
+- `bin/simple_xdp.o` - Basic XDP program
 
-Synced to: `/etc/eclipta/agents/snapshot.json`
+To build your own eBPF programs:
 
-```json
-[
-  {
-    "id": "agent-001",
-    "hostname": "host1",
-    "version": "0.2.1",
-    "cpu_load": [0.39, 1.09, 1.38],
-    "mem_used_mb": 4865,
-    "disk_used_mb": 79177,
-    "net_rx_kb": 247187,
-    "alert": false,
-    "last_seen": "2025-07-01T16:38:29Z"
-  }
-]
+```bash
+cd examples/ebpf
+make
+```
+
+## Commands
+
+### System Commands
+- `welcome` - Show welcome message and setup help
+- `status` - Show CLI runtime status
+- `monitor` - Interactive terminal UI for monitoring
+- `logs` - View system or agent logs
+- `watch-cpu` - Monitor CPU usage
+
+### eBPF Commands
+- `load` - Load eBPF program
+- `unload` - Unload eBPF program
+- `list` - List loaded programs
+- `inspect` - Inspect program details
+- `upload` - Upload program to storage
+- `remove` - Remove program from storage
+
+### Network Commands
+- `ping-all` - Check agent connectivity
+- `alerts` - List alerting agents
+
+### Configuration Commands
+- `config` - Manage configuration
+- `daemon` - Start daemon process
+
+### Database Commands
+- `check-db` - Check database status
+- `migrate` - Run database migrations
+
+## Configuration
+
+Configuration is stored in `/etc/eclipta/config.yaml`. Key settings:
+
+```yaml
+log_level: "info"
+daemon_enabled: false
+auto_start_programs: false
+monitoring_interval: 5
+```
+
+## Project Structure
+
+```
+eclipta/
+├── eclipta-cli/          # Main CLI application
+│   ├── src/
+│   │   ├── commands/     # Command implementations
+│   │   ├── utils/        # Utility functions
+│   │   └── main.rs       # Entry point
+│   └── Cargo.toml
+├── examples/ebpf/        # Sample eBPF programs
+│   ├── simple_trace.c
+│   ├── simple_xdp.c
+│   └── Makefile
+├── bin/                  # Compiled eBPF programs
+│   ├── simple_trace.o
+│   └── simple_xdp.o
+├── eclipta.yaml         # Comprehensive documentation
+└── README.md
 ```
 
 ## Development
 
-To run locally:
+### Building
 
 ```bash
-cargo run -- monitor
+# Development build
+cargo build
+
+# Release build
+cargo build --release
+
+# Run tests
+cargo test
+
+# Format code
+cargo fmt
+
+# Lint code
+cargo clippy
 ```
 
-## Roadmap
+### Adding New Commands
 
-- [ ] `install-agent` from GitHub Releases
-- [ ] Remote API mode (multi-node)
-- [ ] TUI dashboard for snapshot view
-- [ ] Plugin architecture for collectors
+1. Create command module in `eclipta-cli/src/commands/`
+2. Add command to `main.rs` command enum
+3. Implement command handler
+4. Update documentation in `eclipta.yaml`
+
+## Documentation
+
+For comprehensive documentation including all commands, options, and examples, see `eclipta.yaml`.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
 MIT © 2025 Mahesh Bhatiya
 
-## Project Structure
+## Support
 
-```
-/cli/
-  src/
-    commands/
-    utils/
-    main.rs         # CLI parser & dispatch
-/run/eclipta/       # Live agent metrics (.json)
-/etc/eclipta/       # Persistent config + snapshot.json
-```
-
-## Contributing
-
-PRs welcome! If you're building tooling for observability or Linux system automation, open an issue or suggest improvements.
+- Issues: [GitHub Issues](https://github.com/stackroost/eclipta/issues)
+- Documentation: [GitHub Wiki](https://github.com/stackroost/eclipta/wiki)
+- Email: support@eclipta.dev
