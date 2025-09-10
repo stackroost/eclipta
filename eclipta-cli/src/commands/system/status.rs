@@ -206,28 +206,39 @@ async fn get_kernel_status(program_name: &str) -> Result<KernelStatus> {
     let mut program_type = None;
     let mut memory_usage = None;
 
-    for line in stdout.lines() {
-        if line.contains(program_name) {
-            loaded = true;
-            
-            // Extract program ID
-            if let Some(id_str) = line.split(':').next() {
-                if let Ok(id) = id_str.parse::<u32>() {
-                    program_id = Some(id);
-                }
-            }
-
-            // Extract program type
-            if let Some(type_part) = line.split_whitespace().nth(1) {
-                program_type = Some(type_part.to_string());
-            }
-
-            // Extract memory usage
-            if let Some(mem_part) = line.split("memlock").nth(1) {
-                if let Some(mem_str) = mem_part.split('B').next() {
-                    if let Ok(mem) = mem_str.parse::<u64>() {
-                        memory_usage = Some(mem);
+    // Look for programs loaded by eclipta-cli
+    // The bpftool output shows function names and pids on different lines
+    let lines: Vec<&str> = stdout.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
+        // Check if this line contains eclipta-cli in the pids field
+        if line.contains("pids eclipta-cli") {
+            // Look backwards to find the program info
+            for j in (0..i).rev() {
+                let prev_line = lines[j];
+                if prev_line.contains("tracepoint") || prev_line.contains("xdp") || prev_line.contains("tc") {
+                    loaded = true;
+                    
+                    // Extract program ID from the line with the program type
+                    if let Some(id_str) = prev_line.split(':').next() {
+                        if let Ok(id) = id_str.parse::<u32>() {
+                            program_id = Some(id);
+                        }
                     }
+
+                    // Extract program type
+                    if let Some(type_part) = prev_line.split_whitespace().nth(1) {
+                        program_type = Some(type_part.to_string());
+                    }
+
+                    // Extract memory usage from the current line or nearby
+                    if let Some(mem_part) = line.split("memlock").nth(1) {
+                        if let Some(mem_str) = mem_part.split('B').next() {
+                            if let Ok(mem) = mem_str.parse::<u64>() {
+                                memory_usage = Some(mem);
+                            }
+                        }
+                    }
+                    break;
                 }
             }
             break;
@@ -261,23 +272,33 @@ async fn get_attachment_status(program_name: &str) -> Result<AttachmentStatus> {
     let mut target = None;
     let mut hook_point = None;
 
-    for line in stdout.lines() {
-        if line.contains(program_name) {
-            attached = true;
-            
-            // Extract attachment type
-            if let Some(type_part) = line.split_whitespace().nth(1) {
-                attachment_type = Some(type_part.to_string());
-            }
+    // Look for eclipta-cli processes with attachments
+    let lines: Vec<&str> = stdout.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
+        // Check if this line contains eclipta-cli in the pids field
+        if line.contains("pids eclipta-cli") {
+            // Look backwards to find the attachment info
+            for j in (0..i).rev() {
+                let prev_line = lines[j];
+                if prev_line.contains("tracepoint") || prev_line.contains("perf_event") {
+                    attached = true;
+                    
+                    // Extract attachment type
+                    if let Some(type_part) = prev_line.split_whitespace().nth(1) {
+                        attachment_type = Some(type_part.to_string());
+                    }
 
-            // Extract target/hook information
-            if let Some(target_part) = line.split_whitespace().nth(2) {
-                target = Some(target_part.to_string());
-            }
+                    // Extract target/hook information
+                    if let Some(target_part) = prev_line.split_whitespace().nth(2) {
+                        target = Some(target_part.to_string());
+                    }
 
-            // Extract hook point
-            if let Some(hook_part) = line.split_whitespace().nth(3) {
-                hook_point = Some(hook_part.to_string());
+                    // Extract hook point
+                    if let Some(hook_part) = prev_line.split_whitespace().nth(3) {
+                        hook_point = Some(hook_part.to_string());
+                    }
+                    break;
+                }
             }
             break;
         }
