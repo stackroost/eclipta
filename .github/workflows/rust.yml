@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  DATABASE_URL: "postgres://user:password@localhost/dbname"
 
 jobs:
   build:
