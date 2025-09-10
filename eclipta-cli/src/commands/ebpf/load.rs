@@ -49,6 +49,8 @@ pub struct ProgramRequirements {
     pub requires_interface: bool,
     pub requires_socket_fd: bool,
     pub program_type: String,
+    pub tracepoint_category: Option<String>,
+    pub tracepoint_name: Option<String>,
 }
 
 pub async fn handle_load(opts: LoadOptions) -> Result<()> {
@@ -137,6 +139,8 @@ pub fn validate_ebpf_file(path: &PathBuf) -> Result<ProgramRequirements> {
     let mut requires_interface = false;
     let mut requires_socket_fd = false;
     let mut program_type = String::new();
+    let mut tracepoint_category: Option<String> = None;
+    let mut tracepoint_name: Option<String> = None;
 
     for section in obj.sections() {
         println!("Section: {}", section.name().unwrap());
@@ -144,6 +148,13 @@ pub fn validate_ebpf_file(path: &PathBuf) -> Result<ProgramRequirements> {
             if name.starts_with("tracepoint/") {
                 found_sections.insert("Tracepoint".to_string());
                 program_type = "Tracepoint".to_string();
+                
+                // Extract category and name from tracepoint section
+                let parts: Vec<&str> = name.split('/').collect();
+                if parts.len() >= 3 {
+                    tracepoint_category = Some(parts[1].to_string());
+                    tracepoint_name = Some(parts[2].to_string());
+                }
             } else {
                 match name {
                     XDP_SECTION | XDP_DROP_SECTION => { 
@@ -196,6 +207,8 @@ pub fn validate_ebpf_file(path: &PathBuf) -> Result<ProgramRequirements> {
         requires_interface,
         requires_socket_fd,
         program_type,
+        tracepoint_category,
+        tracepoint_name,
     })
 }
 
@@ -318,6 +331,30 @@ async fn attach_program_to_kernel(
             Err(anyhow!("No SocketFilter program found in eBPF object"))
         }
         
+        "Tracepoint" => {
+            let category = requirements.tracepoint_category.as_ref()
+                .ok_or_else(|| anyhow!("Tracepoint category not found in ELF sections"))?;
+            let name = requirements.tracepoint_name.as_ref()
+                .ok_or_else(|| anyhow!("Tracepoint name not found in ELF sections"))?;
+            
+            let mut ebpf = Ebpf::load_file(path)
+                .context("Failed to load eBPF for Tracepoint attachment")?;
+            
+            for (prog_name, program) in ebpf.programs_mut() {
+                if let Program::TracePoint(tp_prog) = program {
+                    tp_prog.load()
+                        .context("Failed to load Tracepoint program")?;
+                    
+                    tp_prog.attach(category, name)
+                        .context(format!("Failed to attach Tracepoint program to '{}:{}'", category, name))?;
+                    
+                    println!("Tracepoint program '{}' attached to '{}:{}'", prog_name, category, name);
+                    return Ok(format!("Tracepoint program attached to {}:{}", category, name));
+                }
+            }
+            Err(anyhow!("No Tracepoint program found in eBPF object"))
+        }
+        
         _ => {
             println!("Program type '{}' not yet implemented for kernel attachment", requirements.program_type);
             Ok(format!("Program type {} loaded but not attached", requirements.program_type))
@@ -378,6 +415,47 @@ async fn verify_kernel_attachment(requirements: &ProgramRequirements, opts: &Loa
             println!("SocketFilter verification requires manual inspection of socket state");
         }
         
+        "Tracepoint" => {
+            let category = requirements.tracepoint_category.as_ref()
+                .ok_or_else(|| anyhow!("Tracepoint category not found for verification"))?;
+            let name = requirements.tracepoint_name.as_ref()
+                .ok_or_else(|| anyhow!("Tracepoint name not found for verification"))?;
+            
+            // Use bpftool to verify tracepoint attachment
+            let output = Command::new("bpftool")
+                .args(["link", "list"])
+                .output()
+                .await
+                .context("Failed to execute bpftool command")?;
+            
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            
+            // Look for tracepoint programs in the output
+            let mut found = false;
+            for line in output_str.lines() {
+                if line.contains("tracepoint") {
+                    println!("  Found tracepoint link: {}", line.trim());
+                    // Check if this line contains our specific tracepoint
+                    if line.contains(category) && line.contains(name) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            
+            if found {
+                println!("Tracepoint program verified as attached to '{}:{}'", category, name);
+            } else {
+                println!("Tracepoint program not found attached to '{}:{}'", category, name);
+                println!("Available tracepoint links:");
+                for line in output_str.lines() {
+                    if line.contains("tracepoint") {
+                        println!("  {}", line.trim());
+                    }
+                }
+            }
+        }
+        
         _ => {
             println!("Verification not implemented for program type '{}'", requirements.program_type);
         }
@@ -402,6 +480,13 @@ fn print_program_summary(
     
     if let Some(socket_fd) = opts.socket_fd {
         println!("   Socket FD: {}", socket_fd);
+    }
+    
+    if let Some(ref category) = requirements.tracepoint_category {
+        println!("   Tracepoint Category: {}", category);
+    }
+    if let Some(ref name) = requirements.tracepoint_name {
+        println!("   Tracepoint Name: {}", name);
     }
     
     println!("   Interface Required: {}", requirements.requires_interface);
@@ -477,6 +562,11 @@ pub fn get_program_requirements(sections: &HashSet<String>) -> ProgramRequiremen
                 requires_socket_fd = true;
                 program_type = "SocketFilter".to_string();
             }
+            "Tracepoint" => {
+                program_type = "Tracepoint".to_string();
+                // Note: For this function, we can't extract category/name from section names
+                // as we only have the processed section names, not the raw ELF section names
+            }
             _ => {}
         }
     }
@@ -486,6 +576,8 @@ pub fn get_program_requirements(sections: &HashSet<String>) -> ProgramRequiremen
         requires_interface,
         requires_socket_fd,
         program_type,
+        tracepoint_category: None,
+        tracepoint_name: None,
     }
 }
 
