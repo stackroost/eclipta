@@ -1,6 +1,6 @@
 use sqlx::{Pool, Postgres, Row};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
     pub id: i32,
     pub title: String,

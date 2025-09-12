@@ -109,7 +109,7 @@ fn live_hook_for(
     pid: u32,
 ) -> Option<String> {
     let prog_id = prog_index.get(program_name).copied()?;
-    let mut candidates: Vec<&LinkInfo> = link_index.iter().filter(|l| l.prog_id == prog_id).collect();
+    let candidates: Vec<&LinkInfo> = link_index.iter().filter(|l| l.prog_id == prog_id).collect();
     if candidates.is_empty() { return None; }
     if let Some(first_pid_match) = candidates.iter().find(|l| l.pid == Some(pid)) {
         return Some(render_hook(first_pid_match));

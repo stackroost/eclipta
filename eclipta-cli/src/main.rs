@@ -29,11 +29,11 @@ use crate::commands::network::{
     ping_all::handle_ping_all,
 };
 
-// CONFIG COMMANDS
-use crate::commands::config::{
-    config::{handle_config, ConfigOptions},
-    daemon::handle_daemon,
-};
+// CONFIG COMMANDS - Temporarily disabled due to missing config module
+// use crate::commands::config::{
+//     config::{handle_config, ConfigOptions},
+//     daemon::handle_daemon,
+// };
 
 // STORE / DB COMMANDS
 use crate::commands::store::check_db::{handle_check_db, CheckDbOptions};
@@ -62,11 +62,11 @@ enum Commands {
     Logs(LogOptions),
     Unload(UnloadOptions),
     Inspect(InspectOptions),
-    Daemon,
+    // Daemon,  // Temporarily disabled
     Monitor,
     PingAll,
     WatchCpu(WatchCpuOptions),
-    Config(ConfigOptions),
+    // Config(ConfigOptions),  // Temporarily disabled
     Alerts,
     Version(VersionOptions),
     Run(RunOptions),
@@ -92,13 +92,17 @@ async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>>
         Commands::Status(opts) => run_status(opts).await?,
         Commands::Load(opts) => handle_load(opts).await?,
         Commands::Unload(opts) => handle_unload(opts),
-        Commands::Inspect(opts) => handle_inspect(opts),
+        Commands::Inspect(opts) => {
+            if let Err(e) = handle_inspect(opts).await {
+                eprintln!("[INSPECT ERROR] {}", e);
+            }
+        }
         Commands::Logs(opts) => handle_logs(opts).await,
-        Commands::Daemon => handle_daemon().await,
+        // Commands::Daemon => handle_daemon().await,  // Temporarily disabled
         Commands::Monitor => handle_monitor().await?,
         Commands::PingAll => handle_ping_all().await,
         Commands::WatchCpu(opts) => handle_watch_cpu(opts).await?,
-        Commands::Config(opts) => handle_config(opts).await?,
+        // Commands::Config(opts) => handle_config(opts).await?,  // Temporarily disabled
         Commands::Alerts => handle_alerts().await?,
         Commands::Version(opts) => handle_version(opts).await?,
         Commands::Run(opts) => handle_run(opts).await,
