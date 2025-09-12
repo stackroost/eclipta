@@ -188,7 +188,7 @@ async fn build_program_status(program: &crate::db::programs::Program) -> Result<
     })
 }
 
-async fn get_kernel_status(program_name: &str) -> Result<KernelStatus> {
+async fn get_kernel_status(_program_name: &str) -> Result<KernelStatus> {
     // Check if program is loaded in kernel using bpftool
     let output = TokioCommand::new("bpftool")
         .args(["prog", "list"])
@@ -254,7 +254,7 @@ async fn get_kernel_status(program_name: &str) -> Result<KernelStatus> {
     })
 }
 
-async fn get_attachment_status(program_name: &str) -> Result<AttachmentStatus> {
+async fn get_attachment_status(_program_name: &str) -> Result<AttachmentStatus> {
     // Check if program is attached to any hooks
     let output = TokioCommand::new("bpftool")
         .args(["link", "list"])

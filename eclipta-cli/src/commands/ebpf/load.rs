@@ -37,11 +37,11 @@ pub const XDP_DROP_SECTION: &str = "xdp_drop";
 pub const TC_INGRESS_SECTION: &str = "tc_ingress";
 pub const TC_EGRESS_SECTION: &str = "tc_egress";
 pub const SOCKET_FILTER_SECTION: &str = "socket_filter";
-pub const TRACEPOINT_NET_SECTION: &str = "tracepoint/net";
+// pub const TRACEPOINT_NET_SECTION: &str = "tracepoint/net";
 pub const KPROBE_NET_SECTION: &str = "kprobe/net";
 pub const UPROBE_NET_SECTION: &str = "uprobe/net";
 pub const LSM_NET_SECTION: &str = "lsm/net";
-pub const TRACEPOINT_SECTION: &str = "tracepoint";
+// pub const TRACEPOINT_SECTION: &str = "tracepoint";
 
 #[derive(Debug)]
 pub struct ProgramRequirements {
@@ -228,34 +228,7 @@ fn validate_runtime_args(opts: &LoadOptions, requirements: &ProgramRequirements)
     Ok(())
 }
 
-fn load_ebpf_with_aya(path: &PathBuf) -> Result<()> {
-    let mut ebpf = Ebpf::load_file(path)
-        .context("Failed to load eBPF object with Aya")?;
 
-    let map_count = ebpf.maps().count();
-    if map_count == 0 {
-        println!("No maps found in eBPF object");
-    } else {
-        println!("Found {} maps in eBPF object", map_count);
-    }
-
-    for (name, program) in ebpf.programs_mut() {
-        match load_program_by_type(program) {
-            Ok(()) => println!("Program '{}' loaded successfully", name),
-            Err(e) => {
-                let error_msg = e.to_string();
-                if error_msg.contains("busy") || error_msg.contains("already") {
-                    println!("Program '{}' already loaded (EBUSY)", name);
-                    continue;
-                }
-                return Err(anyhow!("Failed to load program '{}': {}", name, e));
-            }
-        }
-    }
-
-    println!("Aya eBPF loading completed successfully");
-    Ok(())
-}
 
 async fn load_and_attach_ebpf(
     path: &PathBuf, 
@@ -616,56 +589,4 @@ pub(crate) fn load_program_by_type(program: &mut Program) -> Result<(), ProgramE
             Ok(())
         }
     }
-}
-
-pub fn get_program_requirements(sections: &HashSet<String>) -> ProgramRequirements {
-    let mut requires_interface = false;
-    let mut requires_socket_fd = false;
-    let mut program_type = String::new();
-
-    for section in sections {
-        match section.as_str() {
-            "XDP" => {
-                requires_interface = true;
-                program_type = "XDP".to_string();
-            }
-            "TC Ingress" | "TC Egress" => {
-                requires_interface = true;
-                program_type = "TC".to_string();
-            }
-            "Socket Filter" => {
-                requires_socket_fd = true;
-                program_type = "SocketFilter".to_string();
-            }
-            "Tracepoint" => {
-                program_type = "Tracepoint".to_string();
-                // Note: For this function, we can't extract category/name from section names
-                // as we only have the processed section names, not the raw ELF section names
-            }
-            _ => {}
-        }
-    }
-
-    ProgramRequirements {
-        sections: sections.clone(),
-        requires_interface,
-        requires_socket_fd,
-        program_type,
-        tracepoint_category: None,
-        tracepoint_name: None,
-    }
-}
-
-pub fn validate_ebpf_file_legacy(path: PathBuf) -> Result<(), String> {
-    validate_ebpf_file(&path)
-        .map_err(|e| e.to_string())
-        .map(|_| ())
-}
-
-pub fn handle_file_process(path: PathBuf) {
-    if let Err(e) = validate_ebpf_file(&path) {
-        eprintln!("Validation failed: {}", e);
-        return;
-    }
-    println!("eBPF object file is valid: {}", path.display());
 }
