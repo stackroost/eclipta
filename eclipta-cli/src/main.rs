@@ -91,7 +91,11 @@ async fn handle_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>>
         Commands::Welcome => run_welcome(),
         Commands::Status(opts) => run_status(opts).await?,
         Commands::Load(opts) => handle_load(opts).await?,
-        Commands::Unload(opts) => handle_unload(opts),
+        Commands::Unload(opts) => {
+            if let Err(e) = handle_unload(opts).await {
+                eprintln!("[UNLOAD ERROR] {}", e);
+            }
+        }
         Commands::Inspect(opts) => {
             if let Err(e) = handle_inspect(opts).await {
                 eprintln!("[INSPECT ERROR] {}", e);
