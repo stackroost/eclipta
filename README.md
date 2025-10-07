@@ -174,9 +174,3 @@ For comprehensive documentation including all commands, options, and examples, s
 ## License
 
 MIT © 2025 Mahesh Bhatiya
-
-## Support
-
-- Issues: [GitHub Issues](https://github.com/stackroost/eclipta/issues)
-- Documentation: [GitHub Wiki](https://github.com/stackroost/eclipta/wiki)
-- Email: support@eclipta.dev
